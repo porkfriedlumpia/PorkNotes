@@ -1,256 +1,303 @@
-CaramelNotes = CaramelNotes or {}
+CaramelNotes = {}
 
 local _G = getfenv(0)
+local chatHooks = {}
 local realm = GetRealmName()
 
--- Debug toggle
-CaramelNotes.ChatDebug = false
-
--- Debug helper
 CaramelNotes.DebugPrint = function(msg)
     if msg ~= nil then
-        DEFAULT_CHAT_FRAME:AddMessage("DEBUG: " .. string.gsub(msg, "|", "||"))
+        DEFAULT_CHAT_FRAME:AddMessage("DEBUG: " .. gsub(msg, "|", "||"))
     else
         DEFAULT_CHAT_FRAME:AddMessage("DEBUG: <nil>")
     end
 end
 
--- Event registration helper
+local function StrReplace(text, from, to)
+    local index = string.find(text, from, 1, true)
+    if index then
+        text = string.sub(text, 1, index - 1) .. to .. string.sub(text, index + string.len(from), string.len(text))
+    end
+    return text
+end
+
 local function RegisterEvent(event, func)
     local frame = CreateFrame("Frame")
     frame:RegisterEvent(event)
     frame:SetScript("OnEvent", func)
 end
 
--- Notes data functions
-CaramelNotes.GetAllNotes = function()
+CaramelNotes.GetAllNotes = function ()
     if CaramelNotes_Data and CaramelNotes_Data[realm] then
         return CaramelNotes_Data[realm].notes
     end
     return nil
 end
 
-CaramelNotes.GetPlayerNote = function(playername)
+CaramelNotes.GetPlayerNote = function (playername)
     if playername and CaramelNotes_Data and CaramelNotes_Data[realm] and CaramelNotes_Data[realm].notes then
         return CaramelNotes_Data[realm].notes[playername]
     end
     return nil
 end
 
-CaramelNotes.SetPlayerNote = function(playername, text)
-    if not playername or not CaramelNotes_Data or not CaramelNotes_Data[realm] or not CaramelNotes_Data[realm].notes then return end
-
-    if text and text ~= "" then
-        if not CaramelNotes_Data[realm].notes[playername] then
-            CaramelNotes_Data[realm].notes[playername] = {
-                created = time(),
-                createdBy = UnitName("player"),
-                createdAtZone = GetRealZoneText()
-            }
+CaramelNotes.SetPlayerNote = function (playername, text)
+    if playername and CaramelNotes_Data and CaramelNotes_Data[realm] and CaramelNotes_Data[realm].notes then
+        if text and text ~= "" then
+            if not CaramelNotes_Data[realm].notes[playername] then
+                CaramelNotes_Data[realm].notes[playername] = {}
+                CaramelNotes_Data[realm].notes[playername].created = time()
+                CaramelNotes_Data[realm].notes[playername].createdBy = UnitName("player")
+                CaramelNotes_Data[realm].notes[playername].createdAtZone = GetRealZoneText()
+            end
+            CaramelNotes_Data[realm].notes[playername].text = text
+            CaramelNotes_Data[realm].notes[playername].updated = time()
+            CaramelNotes_Data[realm].notes[playername].updatedBy = UnitName("player")
+            CaramelNotes_Data[realm].notes[playername].updatedAtZone = GetRealZoneText()
+        else
+            CaramelNotes_Data[realm].notes[playername] = nil
         end
-        CaramelNotes_Data[realm].notes[playername].text = text
-        CaramelNotes_Data[realm].notes[playername].updated = time()
-        CaramelNotes_Data[realm].notes[playername].updatedBy = UnitName("player")
-        CaramelNotes_Data[realm].notes[playername].updatedAtZone = GetRealZoneText()
-    else
-        CaramelNotes_Data[realm].notes[playername] = nil
     end
+    return nil
 end
 
--- Settings helper
-CaramelNotes.GetSetting = function(setting, defaultValue)
-    if not CaramelNotes_Settings then return defaultValue end
-    if CaramelNotes_Settings[setting] == nil then return defaultValue end
+CaramelNotes.GetSetting = function (setting, defaultValue)
+    if not CaramelNotes_Settings then
+        return defaultValue
+    end
+    if CaramelNotes_Settings[setting] == nil then
+        return defaultValue
+    end
     return CaramelNotes_Settings[setting]
 end
-CaramelNotes.SetSetting = function(setting, value)
+
+CaramelNotes.SetSetting = function (setting, value)
     CaramelNotes_Settings[setting] = value
 end
 
--- Addon loaded
 local function OnAddonLoaded()
-    if arg1 == "CaramelNotes" then
-        CaramelNotes_Data = CaramelNotes_Data or {}
-        CaramelNotes_Data[realm] = CaramelNotes_Data[realm] or {}
-        CaramelNotes_Data[realm].notes = CaramelNotes_Data[realm].notes or {}
-        CaramelNotes_Settings = CaramelNotes_Settings or {}
+    if arg1 == "CaramelNotes" or arg1 == "CaramelNotes-WotLK" then
+        if not CaramelNotes_Data then
+            CaramelNotes_Data = {}
+        end
+        if not CaramelNotes_Data[realm] then
+            CaramelNotes_Data[realm] = {}
+        end
+        if not CaramelNotes_Data[realm].notes then
+            CaramelNotes_Data[realm].notes = {}
+        end
+
+        if not CaramelNotes_Settings then
+            CaramelNotes_Settings = {}
+        end
     end
 end
 
--- Item ref handler
 local originalSetItemRef = SetItemRef
 function SetItemRef(link, text, button)
-    if string.sub(link,1,13) == "caramelnotes:" then
-        CaramelNotes.ShowEditFrame(string.sub(link,14))
+    if string.sub(link, 1, 13) == "caramelnotes:" then
+        -- Nothing
     else
-        originalSetItemRef(link,text,button)
+        originalSetItemRef(link, text, button)
     end
 end
 
--- Tooltip handlers
 local function OnHyperlinkEnter()
     local link = arg1
-    if string.sub(link,1,13) ~= "caramelnotes:" then return end
-    local playername = string.sub(link,14)
+    if string.sub(link, 1, 13) ~= "caramelnotes:" then
+        return
+    end
+    local playername = string.sub(link, 14)
     local note = CaramelNotes.GetPlayerNote(playername)
-    if not note then return end
+    if not note then
+        return
+    end
+
+    local showCreatedBy = CaramelNotes.GetSetting("ChatShowCreatedBy", false)
+    local showCreatedAtZone = CaramelNotes.GetSetting("ChatShowCreatedAtZone", false)
+
     GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
     GameTooltip:ClearLines()
-    GameTooltip:AddLine(playername, 1,1,1)
-    GameTooltip:AddLine(note.text, 0.9,0.9,0.9)
+    GameTooltip:AddLine(playername, 1, 1, 1)
+    GameTooltip:AddLine(note.text, 0.9, 0.9, 0.9)
+    if showCreatedBy and showCreatedAtZone and note.createdBy and note.createdAtZone then
+        GameTooltip:AddLine("-- " .. note.createdBy .. " (" .. note.createdAtZone .. ")", 0.7, 0.7, 0.7)
+    elseif showCreatedBy and note.createdBy then
+        GameTooltip:AddLine("-- " .. note.createdBy, 0.7, 0.7, 0.7)
+    elseif showCreatedAtZone and note.createdAtZone then
+        GameTooltip:AddLine("-- " .. note.createdAtZone, 0.7, 0.7, 0.7)
+    end
     GameTooltip:Show()
 end
 
 local function OnHyperlinkLeave()
     local link = arg1
-    if string.sub(link,1,13) == "caramelnotes:" then
+    if string.sub(link, 1, 13) == "caramelnotes:" then
         GameTooltip:Hide()
     end
 end
 
--- Mouseover tooltip
+local string_gmatch = string.gmatch or string.gfind
+
+local function OnChatFrameAddMessage(frame, text, a1, a2, a3, a4, a5)
+    if string.find(text, "DEBUG") then
+        return text
+    end
+
+    if not CaramelNotes.GetSetting("ShowNotesInChat", true) then
+        return text
+    end
+    for playerdata, nametext in string_gmatch(text, "|Hplayer:(.-)|h(.-)|h") do
+        local playername = playerdata
+        local metadataIndex = string.find(playername, ":", 1, true)
+        if metadataIndex then
+            playername = string.sub(playername, 1, metadataIndex - 1)
+        end
+        local note = CaramelNotes.GetPlayerNote(playername)
+        if note then
+            local from = "|Hplayer:" .. playerdata .. "|h" .. nametext .. "|h"
+            local to = "|Hplayer:" .. playerdata .. "|h" .. nametext .. "|h|Hcaramelnotes:" .. playername .. "|h|cFFFFFF00 (note)|h|r"
+            text = StrReplace(text, from, to)
+        end
+    end
+    return text
+end
+
+local function RegisterChatHooks()
+    for i = 1, NUM_CHAT_WINDOWS do
+        local chatFrame = _G["ChatFrame"..i]
+        if chatFrame and not chatHooks[i] then
+            chatHooks[i] = {}
+            chatHooks[i].AddMessage = chatFrame.AddMessage
+            chatFrame.AddMessage = function(frame, text, a1, a2, a3, a4, a5)
+                text = OnChatFrameAddMessage(frame, text, a1, a2, a3, a4, a5)
+                chatHooks[i].AddMessage(frame, text, a1, a2, a3, a4, a5)
+            end
+            chatHooks[i].OnHyperlinkEnter = chatFrame:GetScript("OnHyperlinkEnter")
+            chatFrame:SetScript("OnHyperlinkEnter", function()
+                if chatHooks[i].OnHyperlinkEnter then
+                    chatHooks[i].OnHyperlinkEnter()
+                end
+                OnHyperlinkEnter()
+            end)
+            chatHooks[i].OnHyperlinkLeave = chatFrame:GetScript("OnHyperlinkLeave")
+            chatFrame:SetScript("OnHyperlinkLeave", function()
+                if chatHooks[i].OnHyperlinkLeave then
+                    chatHooks[i].OnHyperlinkLeave()
+                end
+                OnHyperlinkLeave()
+            end)
+        end
+    end
+end
+
+local function RegisterCommands()
+    SLASH_CARAMELNOTES1 = "/caramelnotes"
+    SlashCmdList["CARAMELNOTES"] = function(msg)
+        CaramelNotes.ShowNotesFrame()
+    end
+    SLASH_NOTES1 = "/notes"
+    SlashCmdList["NOTES"] = function(msg)
+        CaramelNotes.ShowNotesFrame()
+    end
+end
+
 local function OnUpdateMouseoverUnit()
-    if not GameTooltip:IsShown() then return end
+    if not GameTooltip:IsShown() then
+        return
+    end
     local unit = "mouseover"
-    if not UnitIsPlayer(unit) then return end
+    if not UnitIsPlayer(unit) then
+        return
+    end
+
+    local showNote = CaramelNotes.GetSetting("ShowNotesInTooltips", true)
+    local showCreatedBy = CaramelNotes.GetSetting("TooltipsShowCreatedBy", false)
+    local showCreatedAtZone = CaramelNotes.GetSetting("TooltipsShowCreatedAtZone", false)
+
+    if not showNote then
+        return
+    end
     local note = CaramelNotes.GetPlayerNote(UnitName(unit))
     if note then
-        GameTooltip:AddLine(note.text, 1,1,0)
+        GameTooltip:AddLine(note.text, 1, 1, 0)
+        if showCreatedBy and showCreatedAtZone and note.createdBy and note.createdAtZone then
+            GameTooltip:AddLine("-- " .. note.createdBy .. " (" .. note.createdAtZone .. ")", 0.7, 0.7, 0.7)
+        elseif showCreatedBy and note.createdBy then
+            GameTooltip:AddLine("-- " .. note.createdBy, 0.7, 0.7, 0.7)
+        elseif showCreatedAtZone and note.createdAtZone then
+            GameTooltip:AddLine("-- " .. note.createdAtZone, 0.7, 0.7, 0.7)
+        end
         GameTooltip:Show()
     end
 end
 
--- UnitPopup menus
 local function RegisterUnitPopupMenus()
-    UnitPopupButtons["CARAMELNOTES_EDIT_NOTE"] = { text="Edit note", dist=0 }
-    local menus = {"PLAYER","FRIEND","PARTY","RAID"}
-    for _,menu in ipairs(menus) do
-        local atIndex = 1
-        for index,value in ipairs(UnitPopupMenus[menu]) do
-            if value=="CANCEL" then atIndex=index break end
+    UnitPopupButtons["CARAMELNOTES_EDIT_NOTE"] = {
+        text = "Edit note",
+        dist = 0,
+    }
+
+    local atIndex = 1
+    for index, value in ipairs(UnitPopupMenus["PLAYER"]) do
+        if value == "CANCEL" then
+            atIndex = index
+            break
         end
-        table.insert(UnitPopupMenus[menu], atIndex, "CARAMELNOTES_EDIT_NOTE")
     end
+    table.insert(UnitPopupMenus["PLAYER"], atIndex, "CARAMELNOTES_EDIT_NOTE")
+
+    atIndex = 1
+    for index, value in ipairs(UnitPopupMenus["FRIEND"]) do
+        if value == "CANCEL" then
+            atIndex = index
+            break
+        end
+    end
+    table.insert(UnitPopupMenus["FRIEND"], atIndex, "CARAMELNOTES_EDIT_NOTE")
+
+    atIndex = 1
+    for index, value in ipairs(UnitPopupMenus["PARTY"]) do
+        if value == "CANCEL" then
+            atIndex = index
+            break
+        end
+    end
+    table.insert(UnitPopupMenus["PARTY"], atIndex, "CARAMELNOTES_EDIT_NOTE")
+
+    atIndex = 1
+    for index, value in ipairs(UnitPopupMenus["RAID"]) do
+        if value == "CANCEL" then
+            atIndex = index
+            break
+        end
+    end
+    table.insert(UnitPopupMenus["RAID"], atIndex, "CARAMELNOTES_EDIT_NOTE")
 end
 
--- Hook unit popup
 if hooksecurefunc then
-    hooksecurefunc("UnitPopup_OnClick", function(self)
-        local button = self or this
-        if not button then return end
-        if button.value=="CARAMELNOTES_EDIT_NOTE" then
-            local menu = UIDROPDOWNMENU_INIT_MENU
-            if type(menu)=="string" then menu = _G[menu] end
-            local playername = menu and menu.name
-            if playername then CaramelNotes.ShowEditFrame(playername) end
+    hooksecurefunc("UnitPopup_OnClick", function (self)
+        if self.value == "CARAMELNOTES_EDIT_NOTE" then
+            local playername = UIDROPDOWNMENU_INIT_MENU.name
+            if playername then
+                CaramelNotes.ShowEditFrame(playername)
+            end
         end
     end)
 else
     local original_UnitPopup_OnClick = UnitPopup_OnClick
     function UnitPopup_OnClick()
         original_UnitPopup_OnClick()
-        local button = this
-        if not button then return end
-        if button.value=="CARAMELNOTES_EDIT_NOTE" then
-            local menu = UIDROPDOWNMENU_INIT_MENU
-            if type(menu)=="string" then menu=_G[menu] end
-            local playername = menu and menu.name
-            if playername then CaramelNotes.ShowEditFrame(playername) end
-        end
-    end
-end
-
--- Slash commands
-local function RegisterCommands()
-    SLASH_CARAMELNOTES1 = "/caramelnotes"
-    SlashCmdList["CARAMELNOTES"] = function(msg) CaramelNotes.ShowNotesFrame() end
-
-    SLASH_NOTES1 = "/notes"
-    SlashCmdList["NOTES"] = function(msg) CaramelNotes.ShowNotesFrame() end
-
-    SLASH_NOTESDEBUG1 = "/notesdebug"
-    SlashCmdList["NOTESDEBUG"] = function(msg)
-        CaramelNotes.ChatDebug = not CaramelNotes.ChatDebug
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[CaramelNotes]|r Chat debug: "..tostring(CaramelNotes.ChatDebug))
-    end
-end
-
--- Chat alert routing functions
-local function SendChatFrame1(alertText)
-    if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage(alertText)
-    end
-end
-
-local function SendChatFrame3(alertText)
-    if ChatFrame3 then
-        ChatFrame3:AddMessage(alertText)
-    end
-end
-
-local function RegisterChatAlerts()
-    local frame = CreateFrame("Frame")
-
-    frame:SetScript("OnEvent", function()
-        local msg = arg1
-        local author = arg2
-        local channelID = tonumber(arg7) or 0
-        local channelName = tostring(arg9 or "")
-
-        if CaramelNotes.ChatDebug then
-            local skipDebug = false
-            if event == "CHAT_MSG_CHANNEL" and channelID == 0 then
-                local lname = string.lower(channelName)
-                if lname == "ttrp" or lname == "lft" then
-                    skipDebug = true
-                end
-            end
-            if not skipDebug then
-                local argsText = ""
-                for i = 1, 9 do
-                    local val = _G["arg"..i]
-                    if val == nil then val = "<nil>" end
-                    argsText = argsText.." arg"..i.."="..tostring(val)
-                end
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[CaramelNotes Debug]|r Event="..tostring(event)..argsText)
+        if this.value == "CARAMELNOTES_EDIT_NOTE" then
+            local playername = _G[UIDROPDOWNMENU_INIT_MENU].name
+            if playername then
+                CaramelNotes.ShowEditFrame(playername)
             end
         end
-
-        if not msg or not author then return end
-        if not CaramelNotes.GetSetting("ShowNotesInChat", true) then return end
-
-        -- Only apply the channelID==0 filter for actual channel messages
-        if event == "CHAT_MSG_CHANNEL" and channelID == 0 then return end
-
-        local note = CaramelNotes.GetPlayerNote(author)
-        if not note then return end
-
-        local alertText = "|Hcaramelnotes:"..author.."|h|cffffcc00* "..author.." has a note.|h|r"
-
-        if event == "CHAT_MSG_CHANNEL" and (channelID == 27 or channelID == 24) then
-            SendChatFrame3(alertText)
-        else
-            SendChatFrame1(alertText)
-        end
-    end)
-
-    local events = {
-        "CHAT_MSG_SAY",
-        "CHAT_MSG_YELL",
-        "CHAT_MSG_PARTY",
-        "CHAT_MSG_GUILD",
-        "CHAT_MSG_WHISPER",
-        "CHAT_MSG_CHANNEL"
-    }
-
-    for _, e in ipairs(events) do
-        frame:RegisterEvent(e)
     end
 end
 
--- Register events
 RegisterEvent("ADDON_LOADED", OnAddonLoaded)
 RegisterEvent("UPDATE_MOUSEOVER_UNIT", OnUpdateMouseoverUnit)
-RegisterChatAlerts()
+RegisterChatHooks()
 RegisterCommands()
 RegisterUnitPopupMenus()
