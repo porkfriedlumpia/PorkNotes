@@ -1,4 +1,4 @@
-CaramelNotes = {}
+CaramelNotes = CaramelNotes or {}
 
 local _G = getfenv(0)
 local realm = GetRealmName()
@@ -13,11 +13,6 @@ CaramelNotes.DebugPrint = function(msg)
     else
         DEFAULT_CHAT_FRAME:AddMessage("DEBUG: <nil>")
     end
-end
-
--- Safe string replace
-local function StrReplace(text, from, to)
-    return string.gsub(text, from, to, 1)
 end
 
 -- Event registration helper
@@ -43,21 +38,22 @@ CaramelNotes.GetPlayerNote = function(playername)
 end
 
 CaramelNotes.SetPlayerNote = function(playername, text)
-    if playername and CaramelNotes_Data and CaramelNotes_Data[realm] and CaramelNotes_Data[realm].notes then
-        if text and text ~= "" then
-            if not CaramelNotes_Data[realm].notes[playername] then
-                CaramelNotes_Data[realm].notes[playername] = {}
-                CaramelNotes_Data[realm].notes[playername].created = time()
-                CaramelNotes_Data[realm].notes[playername].createdBy = UnitName("player")
-                CaramelNotes_Data[realm].notes[playername].createdAtZone = GetRealZoneText()
-            end
-            CaramelNotes_Data[realm].notes[playername].text = text
-            CaramelNotes_Data[realm].notes[playername].updated = time()
-            CaramelNotes_Data[realm].notes[playername].updatedBy = UnitName("player")
-            CaramelNotes_Data[realm].notes[playername].updatedAtZone = GetRealZoneText()
-        else
-            CaramelNotes_Data[realm].notes[playername] = nil
+    if not playername or not CaramelNotes_Data or not CaramelNotes_Data[realm] or not CaramelNotes_Data[realm].notes then return end
+
+    if text and text ~= "" then
+        if not CaramelNotes_Data[realm].notes[playername] then
+            CaramelNotes_Data[realm].notes[playername] = {
+                created = time(),
+                createdBy = UnitName("player"),
+                createdAtZone = GetRealZoneText()
+            }
         end
+        CaramelNotes_Data[realm].notes[playername].text = text
+        CaramelNotes_Data[realm].notes[playername].updated = time()
+        CaramelNotes_Data[realm].notes[playername].updatedBy = UnitName("player")
+        CaramelNotes_Data[realm].notes[playername].updatedAtZone = GetRealZoneText()
+    else
+        CaramelNotes_Data[realm].notes[playername] = nil
     end
 end
 
@@ -81,13 +77,34 @@ local function OnAddonLoaded()
     end
 end
 
--- Item reference handler
+-- Item ref handler
 local originalSetItemRef = SetItemRef
 function SetItemRef(link, text, button)
     if string.sub(link,1,13) == "caramelnotes:" then
         CaramelNotes.ShowEditFrame(string.sub(link,14))
     else
         originalSetItemRef(link,text,button)
+    end
+end
+
+-- Tooltip handlers
+local function OnHyperlinkEnter()
+    local link = arg1
+    if string.sub(link,1,13) ~= "caramelnotes:" then return end
+    local playername = string.sub(link,14)
+    local note = CaramelNotes.GetPlayerNote(playername)
+    if not note then return end
+    GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+    GameTooltip:ClearLines()
+    GameTooltip:AddLine(playername, 1,1,1)
+    GameTooltip:AddLine(note.text, 0.9,0.9,0.9)
+    GameTooltip:Show()
+end
+
+local function OnHyperlinkLeave()
+    local link = arg1
+    if string.sub(link,1,13) == "caramelnotes:" then
+        GameTooltip:Hide()
     end
 end
 
@@ -116,20 +133,29 @@ local function RegisterUnitPopupMenus()
     end
 end
 
--- Hook UnitPopup_OnClick for 1.12
-local function HookUnitPopup_OnClick()
+-- Hook unit popup
+if hooksecurefunc then
+    hooksecurefunc("UnitPopup_OnClick", function(self)
+        local button = self or this
+        if not button then return end
+        if button.value=="CARAMELNOTES_EDIT_NOTE" then
+            local menu = UIDROPDOWNMENU_INIT_MENU
+            if type(menu)=="string" then menu = _G[menu] end
+            local playername = menu and menu.name
+            if playername then CaramelNotes.ShowEditFrame(playername) end
+        end
+    end)
+else
     local original_UnitPopup_OnClick = UnitPopup_OnClick
     function UnitPopup_OnClick()
         original_UnitPopup_OnClick()
         local button = this
         if not button then return end
-        if button.value == "CARAMELNOTES_EDIT_NOTE" then
+        if button.value=="CARAMELNOTES_EDIT_NOTE" then
             local menu = UIDROPDOWNMENU_INIT_MENU
-            if type(menu) == "string" then menu = _G[menu] end
+            if type(menu)=="string" then menu=_G[menu] end
             local playername = menu and menu.name
-            if playername then
-                CaramelNotes.ShowEditFrame(playername)
-            end
+            if playername then CaramelNotes.ShowEditFrame(playername) end
         end
     end
 end
@@ -150,64 +176,63 @@ local function RegisterCommands()
 end
 
 -- Chat alert routing functions
-local function AlertChatFrame1(author)
-    local targetFrame = DEFAULT_CHAT_FRAME
-    local alertText = "|Hcaramelnotes:"..author.."|h|cffffcc00* "..author.." has a note.|h|r"
-    targetFrame:AddMessage(alertText)
-end
-
-local function AlertChatFrame3(author)
-    local f = getglobal("ChatFrame3")
-    if f then
-        local alertText = "|Hcaramelnotes:"..author.."|h|cffffcc00* "..author.." has a note.|h|r"
-        f:AddMessage(alertText)
+local function SendChatFrame1(alertText)
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(alertText)
     end
 end
 
--- Central chat alert handler
-local function ChatEventHandler(self, event)
-    local msg = arg1
-    local author = arg2
-    local channelID = tonumber(arg7) or 0
-
-    if not msg or not author then return end
-    if not CaramelNotes.GetSetting("ShowNotesInChat", true) then return end
-
-    -- Block all messages from arg7 = 0
-    if channelID == 0 then
-        if CaramelNotes.ChatDebug then
-            DEFAULT_CHAT_FRAME:AddMessage(
-                "|cff00ffff[CaramelNotes Debug]|r blocked message from "..tostring(author)
-            )
-        end
-        return
-    end
-
-    local note = CaramelNotes.GetPlayerNote(author)
-    if not note then return end
-
-    -- Route to ChatFrame3 for World (27) / LFG (24)
-    if event == "CHAT_MSG_CHANNEL" and (channelID == "27" or channelID == "24") then
-        AlertChatFrame3(author)
-        if CaramelNotes.ChatDebug then
-            DEFAULT_CHAT_FRAME:AddMessage(
-                "|cff00ffff[CaramelNotes Debug]|r sent "..author.." alert to ChatFrame3 (channelID="..channelID..")"
-            )
-        end
-    else
-        AlertChatFrame1(author)
-        if CaramelNotes.ChatDebug then
-            DEFAULT_CHAT_FRAME:AddMessage(
-                "|cff00ffff[CaramelNotes Debug]|r sent "..author.." alert to ChatFrame1 (channelID="..channelID..")"
-            )
-        end
+local function SendChatFrame3(alertText)
+    if ChatFrame3 then
+        ChatFrame3:AddMessage(alertText)
     end
 end
 
--- Register chat alert events
 local function RegisterChatAlerts()
     local frame = CreateFrame("Frame")
-    frame:SetScript("OnEvent", ChatEventHandler)
+
+    frame:SetScript("OnEvent", function()
+        local msg = arg1
+        local author = arg2
+        local channelID = tonumber(arg7) or 0
+        local channelName = tostring(arg9 or "")
+
+        if CaramelNotes.ChatDebug then
+            local skipDebug = false
+            if event == "CHAT_MSG_CHANNEL" and channelID == 0 then
+                local lname = string.lower(channelName)
+                if lname == "ttrp" or lname == "lft" then
+                    skipDebug = true
+                end
+            end
+            if not skipDebug then
+                local argsText = ""
+                for i = 1, 9 do
+                    local val = _G["arg"..i]
+                    if val == nil then val = "<nil>" end
+                    argsText = argsText.." arg"..i.."="..tostring(val)
+                end
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[CaramelNotes Debug]|r Event="..tostring(event)..argsText)
+            end
+        end
+
+        if not msg or not author then return end
+        if not CaramelNotes.GetSetting("ShowNotesInChat", true) then return end
+
+        -- Only apply the channelID==0 filter for actual channel messages
+        if event == "CHAT_MSG_CHANNEL" and channelID == 0 then return end
+
+        local note = CaramelNotes.GetPlayerNote(author)
+        if not note then return end
+
+        local alertText = "|Hcaramelnotes:"..author.."|h|cffffcc00* "..author.." has a note.|h|r"
+
+        if event == "CHAT_MSG_CHANNEL" and (channelID == 27 or channelID == 24) then
+            SendChatFrame3(alertText)
+        else
+            SendChatFrame1(alertText)
+        end
+    end)
 
     local events = {
         "CHAT_MSG_SAY",
@@ -223,10 +248,9 @@ local function RegisterChatAlerts()
     end
 end
 
--- Register all events
+-- Register events
 RegisterEvent("ADDON_LOADED", OnAddonLoaded)
 RegisterEvent("UPDATE_MOUSEOVER_UNIT", OnUpdateMouseoverUnit)
 RegisterChatAlerts()
 RegisterCommands()
 RegisterUnitPopupMenus()
-HookUnitPopup_OnClick()
