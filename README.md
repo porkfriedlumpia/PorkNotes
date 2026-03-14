@@ -2,14 +2,11 @@
 
 Write notes about other players.
 
-A plugin for Vanilla WoW (1.12).
-
+A plugin for Vanilla WoW (1.12).\
 Compatible with TurtleWoW.
 
-Heavily inspired by [Character Notes](https://www.curseforge.com/wow/addons/character-notes).
-
-Original branch contains version 1.31 of CaramelNotes.
-
+Heavily inspired by [Character Notes](https://www.curseforge.com/wow/addons/character-notes).\
+Original branch contains version 1.31 of CaramelNotes.\
 Addon originally created by MrToffee.
 
 ## Downloads
