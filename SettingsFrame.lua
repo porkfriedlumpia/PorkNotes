@@ -1,6 +1,6 @@
-local frame = CreateFrame("Frame", "CaramelNotes_SettingsFrame", UIParent)
+local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(340)
+frame:SetHeight(280)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -20,7 +20,7 @@ frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFCA4020Caramel|rNotes - Settings")
+title:SetText("PorkNotes - Settings")
 
 -- Makes the window closable by pressing Escape.
 tinsert(UISpecialFrames, frame:GetName())
@@ -31,16 +31,25 @@ closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
 local submitButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 submitButton:SetWidth(100)
 submitButton:SetHeight(24)
-submitButton:SetPoint("BOTTOM", 0, 15)
+submitButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 15)
 submitButton:SetText("OK")
 submitButton:SetScript("OnClick", function() frame:Hide() end)
+
+local importButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+importButton:SetWidth(160)
+importButton:SetHeight(24)
+importButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 15)
+importButton:SetText("Import from CaramelNotes")
+importButton:SetScript("OnClick", function()
+    PorkNotes.ImportFromCaramelNotes()
+end)
 
 frame:SetScript("OnShow", function()
     PlaySound("igQuestListOpen")
 end)
 
 frame:SetScript("OnHide", function()
-    CaramelNotes.ShowNotesFrame()
+    PorkNotes.ShowNotesFrame()
     PlaySound("igQuestListClose")
 end)
 
@@ -56,24 +65,8 @@ local function DisableCheckbox(checkbox)
     checkbox.textElement:SetTextColor(0.5, 0.5, 0.5)
 end
 
-local function ChangeCheckboxState(checkboxName, isEnabled)
-    if isEnabled then
-        EnableCheckbox(checkboxes[checkboxName])
-    else
-        DisableCheckbox(checkboxes[checkboxName])
-    end
-end
-
 local function OnCheckboxToggle(name, isChecked)
-    CaramelNotes.SetSetting(name, isChecked)
-    if name == "ShowNotesInChat" then
-        ChangeCheckboxState("ChatShowCreatedBy", isChecked)
-        ChangeCheckboxState("ChatShowCreatedAtZone", isChecked)
-    end
-    if name == "ShowNotesInTooltips" then
-        ChangeCheckboxState("TooltipsShowCreatedBy", isChecked)
-        ChangeCheckboxState("TooltipsShowCreatedAtZone", isChecked)
-    end
+    PorkNotes.SetSetting(name, isChecked)
 end
 
 local function CreateCheckbox(name, text, x, y)
@@ -102,13 +95,9 @@ local y = 40
 CreateCheckbox("NotesShowCreatedBy", "Show who created the note in the main window", 20, y); y = y + 25
 CreateCheckbox("NotesShowCreatedAtZone", "Show where the note was created in the main window", 20, y); y = y + 35
 
-CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 25
-CreateCheckbox("ChatShowCreatedBy", "Show who created the note", 40, y); y = y + 25
-CreateCheckbox("ChatShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 35
+CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 35
 
-CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 25
-CreateCheckbox("TooltipsShowCreatedBy", "Show who created the note", 40, y); y = y + 25
-CreateCheckbox("TooltipsShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 35
+CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 35
 
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -120,7 +109,7 @@ dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 14))
 UIDropDownMenu_SetWidth(100, dropdown)
 
 local function UpdateDropdown()
-    local currentValue = CaramelNotes.GetSetting("WorldChatFrame", 3)
+    local currentValue = PorkNotes.GetSetting("WorldChatFrame", 3)
     UIDropDownMenu_Initialize(dropdown, function()
         for i = 1, 10 do
             local info = {}
@@ -129,7 +118,7 @@ local function UpdateDropdown()
             info.checked = (i == currentValue)
             info.func = function()
                 local selected = this.value
-                CaramelNotes.SetSetting("WorldChatFrame", selected)
+                PorkNotes.SetSetting("WorldChatFrame", selected)
                 UIDropDownMenu_SetText("Chat Frame " .. selected, dropdown)
                 CloseDropDownMenus()
             end
@@ -139,21 +128,11 @@ local function UpdateDropdown()
     UIDropDownMenu_SetText("Chat Frame " .. currentValue, dropdown)
 end
 
-CaramelNotes.ShowSettingsFrame = function()
-    checkboxes.NotesShowCreatedBy:SetChecked(CaramelNotes.GetSetting("NotesShowCreatedBy", false))
-    checkboxes.NotesShowCreatedAtZone:SetChecked(CaramelNotes.GetSetting("NotesShowCreatedAtZone", false))
-
-    checkboxes.ShowNotesInChat:SetChecked(CaramelNotes.GetSetting("ShowNotesInChat", true))
-    checkboxes.ChatShowCreatedBy:SetChecked(CaramelNotes.GetSetting("ChatShowCreatedBy", false))
-    checkboxes.ChatShowCreatedAtZone:SetChecked(CaramelNotes.GetSetting("ChatShowCreatedAtZone", false))
-    ChangeCheckboxState("ChatShowCreatedBy", checkboxes.ShowNotesInChat:GetChecked())
-    ChangeCheckboxState("ChatShowCreatedAtZone", checkboxes.ShowNotesInChat:GetChecked())
-
-    checkboxes.ShowNotesInTooltips:SetChecked(CaramelNotes.GetSetting("ShowNotesInTooltips", true))
-    checkboxes.TooltipsShowCreatedBy:SetChecked(CaramelNotes.GetSetting("TooltipsShowCreatedBy", false))
-    checkboxes.TooltipsShowCreatedAtZone:SetChecked(CaramelNotes.GetSetting("TooltipsShowCreatedAtZone", false))
-    ChangeCheckboxState("TooltipsShowCreatedBy", checkboxes.ShowNotesInTooltips:GetChecked())
-    ChangeCheckboxState("TooltipsShowCreatedAtZone", checkboxes.ShowNotesInTooltips:GetChecked())
+PorkNotes.ShowSettingsFrame = function()
+    checkboxes.NotesShowCreatedBy:SetChecked(PorkNotes.GetSetting("NotesShowCreatedBy", false))
+    checkboxes.NotesShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("NotesShowCreatedAtZone", false))
+    checkboxes.ShowNotesInChat:SetChecked(PorkNotes.GetSetting("ShowNotesInChat", true))
+    checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
 
     UpdateDropdown()
 
