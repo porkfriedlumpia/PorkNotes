@@ -40,6 +40,28 @@ If you have existing notes in CaramelNotes you can import them into PorkNotes in
 5. Your notes will be imported — any players you already have notes for in PorkNotes will be skipped
 6. Once the import is complete you can disable or uninstall CaramelNotes
 
+## Images
+
+### Main window (`/pn or /porknotes`)
+
+![image](Images/NotesWindow.png)
+
+### Right-click menu on players
+
+![image](Images/EditNote.png)
+
+### Note alerts in chat
+
+![image](Images/ChatAlert.png)
+
+### Settings window
+
+![image](Images/SettingsWindow.png)
+
+### Minimap button
+
+![image](Images/MinimapButton.png)
+
 ## Credits
 
 - Original addon [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee
