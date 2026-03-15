@@ -1,4 +1,4 @@
-local frame = CreateFrame("Frame", "CaramelNotes_EditNoteFrame", UIParent)
+local frame = CreateFrame("Frame", "PorkNotes_EditNoteFrame", UIParent)
 local editingPlayerName = nil
 
 frame:SetWidth(300)
@@ -61,8 +61,8 @@ end)
 local function OnSubmit()
     if editingPlayerName then
         local text = editBox:GetText()
-        CaramelNotes.SetPlayerNote(editingPlayerName, text)
-        CaramelNotes.UpdateNotesFrame()
+        PorkNotes.SetPlayerNote(editingPlayerName, text)
+        PorkNotes.UpdateNotesFrame()
     end
     frame:Hide()
 end
@@ -75,8 +75,8 @@ submitButton:SetScript("OnClick", OnSubmit)
 editBox:SetScript("OnEnterPressed", OnSubmit)
 editBox:SetScript("OnEscapePressed", OnEscape)
 
-CaramelNotes.ShowEditFrame = function (playername)
-    local note = CaramelNotes.GetPlayerNote(playername)
+PorkNotes.ShowEditFrame = function(playername)
+    local note = PorkNotes.GetPlayerNote(playername)
     editingPlayerName = playername
     label:SetText("Editing note for " .. playername .. ":")
     if note then

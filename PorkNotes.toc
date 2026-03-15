@@ -1,0 +1,8 @@
+## Interface: 11200
+## Title: PorkNotes
+## Author: 
+## Notes: Write notes about other players.
+## Version: 0.0.3
+## SavedVariables: PorkNotes_Data, PorkNotes_Settings
+
+Main.xml

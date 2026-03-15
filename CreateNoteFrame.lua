@@ -1,4 +1,4 @@
-local frame = CreateFrame("Frame", "CaramelNotes_CreateNoteFrame", UIParent)
+local frame = CreateFrame("Frame", "PorkNotes_CreateNoteFrame", UIParent)
 local editingPlayerName = nil
 
 frame:SetWidth(300)
@@ -83,8 +83,8 @@ local function OnSubmit()
     local playerName = playerEditBox:GetText()
     if playerName and playerName ~= "" then
         local text = textEditBox:GetText()
-        CaramelNotes.SetPlayerNote(playerName, text)
-        CaramelNotes.UpdateNotesFrame()
+        PorkNotes.SetPlayerNote(playerName, text)
+        PorkNotes.UpdateNotesFrame()
     end
     frame:Hide()
 end
@@ -93,17 +93,17 @@ local function OnEscape()
     frame:Hide()
 end
 
-playerEditBox:SetScript("OnEnterPressed", function ()
+playerEditBox:SetScript("OnEnterPressed", function()
     local playerName = playerEditBox:GetText()
     if playerName and playerName ~= "" then
         textEditBox:SetFocus()
     end
 end)
 playerEditBox:SetScript("OnEscapePressed", OnEscape)
-playerEditBox:SetScript("OnTabPressed", function ()
+playerEditBox:SetScript("OnTabPressed", function()
     textEditBox:SetFocus()
 end)
-playerEditBox:SetScript("OnTextChanged", function ()
+playerEditBox:SetScript("OnTextChanged", function()
     local text = playerEditBox:GetText()
     if text and text ~= "" then
         local firstLetter = string.sub(text, 1, 1)
@@ -118,15 +118,15 @@ end)
 
 textEditBox:SetScript("OnEnterPressed", OnSubmit)
 textEditBox:SetScript("OnEscapePressed", OnEscape)
-textEditBox:SetScript("OnTabPressed", function ()
+textEditBox:SetScript("OnTabPressed", function()
     playerEditBox:SetFocus()
 end)
 
-textEditBox:SetScript("OnEditFocusGained", function ()
+textEditBox:SetScript("OnEditFocusGained", function()
     local playerName = playerEditBox:GetText()
     local noteText = textEditBox:GetText()
     if playerName and playerName ~= "" and (noteText == nil or noteText == "") then
-        local note = CaramelNotes.GetPlayerNote(playerName)
+        local note = PorkNotes.GetPlayerNote(playerName)
         if note then
             textEditBox:SetText(note.text)
         end
@@ -135,7 +135,7 @@ end)
 
 submitButton:SetScript("OnClick", OnSubmit)
 
-CaramelNotes.ShowCreateFrame = function ()
+PorkNotes.ShowCreateFrame = function()
     playerEditBox:SetText("")
     textEditBox:SetText("")
     frame:Show()

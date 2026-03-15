@@ -2,33 +2,26 @@
 
 Write notes about other players.
 
-A plugin for Vanilla WoW (1.12).\
-Compatible with TurtleWoW.
+A plugin for TurtleWoW (1.12 / Lua 5.0).
 
-Heavily inspired by [Character Notes](https://www.curseforge.com/wow/addons/character-notes).\
-Original branch contains version 1.31 of CaramelNotes.\
-Addon originally created by MrToffee.
+Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
-## Downloads
+## Installation
 
-#### URL for addon managers
+1. Download and extract the zip
+2. Place the `PorkNotes` folder in your `Interface/AddOns` directory
+3. Log in and type `/pn` or `/porknotes` to open
 
-- Vanilla WoW (1.12) : https://github.com/porkfriedlumpia/pork-notes.git
+## Commands
 
-#### Manual installation
+- `/porknotes` or `/pn` — Open the notes window
+- `/pndebug` — Toggle debug output in chat
 
-- Vanilla WoW (1.12) : [CaramelNotes-main.zip](https://github.com/porkfriedlumpia/pork-notes/archive/refs/heads/main.zip) (rename the folder to `CaramelNotes`!)
+## Features
 
-## Screenshots
-
-### Main window (`/notes`)
-
-![image](Images/Notes.png)
-
-### Right-click menu option on players
-
-![image](Images/EditNote.png)
-
-### Notes in chat
-
-![image](Images/Chat.png)
+- Write and store notes for any player
+- Notes appear in player tooltips on hover
+- Chat alerts when a noted player sends a message, with a clickable link to edit their note
+- Right-click any player to add or edit their note
+- World and LookingForGroup channel alerts route to a configurable chat frame
+- Settings window to toggle tooltip display, chat alerts, and metadata display

@@ -1,4 +1,4 @@
-local frame = CreateFrame("Frame", "CaramelNotes_NotesFrame", UIParent)
+local frame = CreateFrame("Frame", "PorkNotes_NotesFrame", UIParent)
 frame:SetWidth(600)
 frame:SetHeight(450)
 frame:SetPoint("CENTER", UIParent)
@@ -22,7 +22,7 @@ frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFCA4020Caramel|rNotes")
+title:SetText("PorkNotes")
 
 local resizer = CreateFrame("Button", nil, frame)
 resizer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 5)
@@ -44,7 +44,7 @@ createNoteButton:SetHeight(24)
 createNoteButton:SetPoint("BOTTOMLEFT", 30, 20)
 createNoteButton:SetText("New note")
 createNoteButton:SetScript("OnClick", function()
-    CaramelNotes.ShowCreateFrame()
+    PorkNotes.ShowCreateFrame()
 end)
 
 local settingsButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
@@ -54,7 +54,7 @@ settingsButton:SetPoint("BOTTOMRIGHT", -30, 20)
 settingsButton:SetText("Settings")
 settingsButton:SetScript("OnClick", function()
     frame:Hide()
-    CaramelNotes.ShowSettingsFrame()
+    PorkNotes.ShowSettingsFrame()
 end)
 
 local scrollContainer = CreateFrame("Frame", nil, frame)
@@ -68,7 +68,7 @@ scrollContainer:SetBackdrop({
 })
 scrollContainer:SetBackdropColor(0, 0, 0, 0.4)
 
-local scrollFrame = CreateFrame("ScrollFrame", "CaramelNotes_ShowNotes_ScrollFrame", scrollContainer, "UIPanelScrollFrameTemplate")
+local scrollFrame = CreateFrame("ScrollFrame", "PorkNotes_ShowNotes_ScrollFrame", scrollContainer, "UIPanelScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", scrollContainer, 10, -10)
 scrollFrame:SetPoint("BOTTOMRIGHT", scrollContainer, -30, 10)
 
@@ -106,7 +106,7 @@ local function IsTruncated(label)
     return fullTextWidth > currentWidth
 end
 
-local rightClickMenu = CreateFrame("Frame", "CaramelNotes_ShowNotes_RightClickMenu", UIParent)
+local rightClickMenu = CreateFrame("Frame", "PorkNotes_ShowNotes_RightClickMenu", UIParent)
 local currentPlayerName = nil
 rightClickMenu:SetFrameStrata("DIALOG")
 rightClickMenu:SetBackdrop({
@@ -137,13 +137,13 @@ rightClickMenu:SetScript("OnLeave", function()
 end)
 
 function EditNoteClicked()
-    CaramelNotes.ShowEditFrame(currentPlayerName)
+    PorkNotes.ShowEditFrame(currentPlayerName)
     rightClickMenu:Hide()
 end
 
 function DeleteNoteClicked()
-    CaramelNotes.SetPlayerNote(currentPlayerName, "")
-    CaramelNotes.UpdateNotesFrame()
+    PorkNotes.SetPlayerNote(currentPlayerName, "")
+    PorkNotes.UpdateNotesFrame()
     rightClickMenu:Hide()
     PlaySound("igMainMenuClose")
 end
@@ -186,7 +186,7 @@ local function OpenRightClickMenu(playername)
     y = y + 10
 
     local scale = UIParent:GetEffectiveScale()
-    rightClickMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x/scale, y/scale)
+    rightClickMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)
     rightClickMenu:Show()
 end
 
@@ -201,7 +201,7 @@ end)
 
 local function OnLineClick()
     if arg1 == "LeftButton" then
-        CaramelNotes.ShowEditFrame(this.leftLabel:GetText())
+        PorkNotes.ShowEditFrame(this.leftLabel:GetText())
     else
         OpenRightClickMenu(this.leftLabel:GetText())
     end
@@ -241,7 +241,6 @@ local function CreateLine(leftText, rightText, bottomText, index)
     end
 
     if lines[index + 1] then
-        -- Frame already exists, reuse it.
         lines[index + 1]:SetHeight(lineHeight)
         lines[index + 1]:SetPoint("TOPLEFT", 0, -position)
         lines[index + 1].leftLabel:SetHeight(lineHeight)
@@ -310,7 +309,7 @@ local function CreateLine(leftText, rightText, bottomText, index)
 end
 
 local function RefreshNotes()
-    local notes = CaramelNotes.GetAllNotes()
+    local notes = PorkNotes.GetAllNotes()
     for _, line in ipairs(lines) do
         line:Hide()
     end
@@ -326,8 +325,8 @@ local function RefreshNotes()
         local note = notes[playername]
         local bottomText = nil
 
-        local showCreatedBy = CaramelNotes.GetSetting("NotesShowCreatedBy", false)
-        local showCreatedAtZone = CaramelNotes.GetSetting("NotesShowCreatedAtZone", false)
+        local showCreatedBy = PorkNotes.GetSetting("NotesShowCreatedBy", false)
+        local showCreatedAtZone = PorkNotes.GetSetting("NotesShowCreatedAtZone", false)
 
         if showCreatedBy and showCreatedAtZone and note.createdBy and note.createdAtZone then
             bottomText = "-- " .. note.createdBy .. " (" .. note.createdAtZone .. ")"
@@ -345,14 +344,14 @@ local function RefreshNotes()
     scrollFrame:UpdateScrollChildRect()
 end
 
-CaramelNotes.ShowNotesFrame = function ()
+PorkNotes.ShowNotesFrame = function()
     RefreshNotes()
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent)
     frame:Show()
 end
 
-CaramelNotes.UpdateNotesFrame = function ()
+PorkNotes.UpdateNotesFrame = function()
     if frame:IsShown() then
         RefreshNotes()
     end
