@@ -60,6 +60,45 @@ PorkNotes.SetSetting = function(setting, value)
     PorkNotes_Settings[setting] = value
 end
 
+-- CaramelNotes import
+PorkNotes.ImportFromCaramelNotes = function()
+    if not CaramelNotes_Data then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r No CaramelNotes data found.")
+        return
+    end
+    local imported = 0
+    local skipped = 0
+    for realmName, realmData in pairs(CaramelNotes_Data) do
+        if realmData.notes then
+            PorkNotes_Data[realmName] = PorkNotes_Data[realmName] or {}
+            PorkNotes_Data[realmName].notes = PorkNotes_Data[realmName].notes or {}
+            for playername, note in pairs(realmData.notes) do
+                if not PorkNotes_Data[realmName].notes[playername] then
+                    PorkNotes_Data[realmName].notes[playername] = note
+                    imported = imported + 1
+                else
+                    skipped = skipped + 1
+                end
+            end
+        end
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Import complete: " .. imported .. " notes imported, " .. skipped .. " skipped (already exist).")
+    PorkNotes.UpdateNotesFrame()
+end
+
+-- Check note count across all realms
+local function HasAnyNotes()
+    if not PorkNotes_Data then return false end
+    for _, realmData in pairs(PorkNotes_Data) do
+        if realmData.notes then
+            for _ in pairs(realmData.notes) do
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Addon loaded
 local function OnAddonLoaded()
     if arg1 == "PorkNotes" then
@@ -67,6 +106,11 @@ local function OnAddonLoaded()
         PorkNotes_Data[realm] = PorkNotes_Data[realm] or {}
         PorkNotes_Data[realm].notes = PorkNotes_Data[realm].notes or {}
         PorkNotes_Settings = PorkNotes_Settings or {}
+
+        -- Prompt for CaramelNotes import if data exists and PorkNotes has no notes yet
+        if CaramelNotes_Data and not HasAnyNotes() then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r CaramelNotes data detected. Type |cffffcc00/pn import|r to import your notes.")
+        end
     end
 end
 
@@ -144,7 +188,13 @@ end)
 local function RegisterCommands()
     SLASH_PORKNOTES1 = "/porknotes"
     SLASH_PORKNOTES2 = "/pn"
-    SlashCmdList["PORKNOTES"] = function(msg) PorkNotes.ShowNotesFrame() end
+    SlashCmdList["PORKNOTES"] = function(msg)
+        if string.lower(msg) == "import" then
+            PorkNotes.ImportFromCaramelNotes()
+        else
+            PorkNotes.ShowNotesFrame()
+        end
+    end
 
     SLASH_PORKNOTESDEBUG1 = "/pndebug"
     SlashCmdList["PORKNOTESDEBUG"] = function(msg)

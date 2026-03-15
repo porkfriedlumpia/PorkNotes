@@ -31,9 +31,18 @@ closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
 local submitButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 submitButton:SetWidth(100)
 submitButton:SetHeight(24)
-submitButton:SetPoint("BOTTOM", 0, 15)
+submitButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 15)
 submitButton:SetText("OK")
 submitButton:SetScript("OnClick", function() frame:Hide() end)
+
+local importButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+importButton:SetWidth(160)
+importButton:SetHeight(24)
+importButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 15)
+importButton:SetText("Import from CaramelNotes")
+importButton:SetScript("OnClick", function()
+    PorkNotes.ImportFromCaramelNotes()
+end)
 
 frame:SetScript("OnShow", function()
     PlaySound("igQuestListOpen")
@@ -54,14 +63,6 @@ end
 local function DisableCheckbox(checkbox)
     checkbox:Disable()
     checkbox.textElement:SetTextColor(0.5, 0.5, 0.5)
-end
-
-local function ChangeCheckboxState(checkboxName, isEnabled)
-    if isEnabled then
-        EnableCheckbox(checkboxes[checkboxName])
-    else
-        DisableCheckbox(checkboxes[checkboxName])
-    end
 end
 
 local function OnCheckboxToggle(name, isChecked)

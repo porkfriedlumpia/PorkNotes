@@ -4,5 +4,6 @@
 ## Notes: Write notes about other players.
 ## Version: 0.0.3
 ## SavedVariables: PorkNotes_Data, PorkNotes_Settings
+## LoadVariables: CaramelNotes_Data
 
 Main.xml
