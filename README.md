@@ -33,11 +33,12 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 If you have existing notes in CaramelNotes you can import them into PorkNotes in a few steps:
 
 1. Download and install the CaramelNotes compatibility release: [CaramelNotes 1.3.1](https://github.com/porkfriedlumpia/PorkNotes/archive/refs/tags/CaramelNotes.zip)
-2. Make sure both PorkNotes and CaramelNotes are enabled in your addon list
-3. Log in to the game
-4. Type `/pn import` in chat, or click **Import from CaramelNotes** in the PorkNotes settings window
-5. Your notes will be imported — any players you already have notes for in PorkNotes will be skipped
-6. Once the import is complete you can disable or uninstall CaramelNotes
+2. Extract the folder to your AddOns directory and rename it to `CaramelNotes`
+3. Make sure both PorkNotes and CaramelNotes are enabled in your addon list
+4. Log in to the game
+5. Type `/pn import` in chat, or click **Import from CaramelNotes** in the PorkNotes settings window
+6. Your notes will be imported — any players you already have notes for in PorkNotes will be skipped
+7. Once the import is complete you can disable or uninstall CaramelNotes
 
 ## Images
 
