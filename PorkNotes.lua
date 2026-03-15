@@ -1,8 +1,9 @@
--- PorkNotes v0.1.1
+-- PorkNotes v0.1.2
+-- by MrToffee and porkfriedlumpia
 
 PorkNotes = PorkNotes or {}
 
-local PORKNOTES_VERSION = "0.1.1"
+local PORKNOTES_VERSION = "0.1.2"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -304,9 +305,63 @@ local function RegisterChatAlerts()
     end
 end
 
+-- Minimap button
+local function RegisterMinimapButton()
+    local minimapButton = CreateFrame("Button", "PorkNotes_MinimapButton", Minimap)
+    minimapButton:SetWidth(24)
+    minimapButton:SetHeight(24)
+    minimapButton:SetFrameStrata("MEDIUM")
+    minimapButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 20, -20)
+    minimapButton:SetNormalTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
+    minimapButton:SetPushedTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
+    minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+ 
+    local border = minimapButton:CreateTexture(nil, "OVERLAY")
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    border:SetWidth(50)
+    border:SetHeight(50)
+    border:SetPoint("CENTER", minimapButton, "CENTER", 10, -10)
+ 
+    if PorkNotes.GetSetting("ShowMinimapButton", true) then
+        minimapButton:Show()
+    else
+        minimapButton:Hide()
+    end
+ 
+    minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    minimapButton:SetScript("OnClick", function()
+        if arg1 == "LeftButton" then
+            PorkNotes.ShowNotesFrame()
+        else
+            PorkNotes.ShowSettingsFrame()
+        end
+    end)
+ 
+    minimapButton:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(minimapButton, "ANCHOR_LEFT")
+        GameTooltip:SetText("PorkNotes")
+        GameTooltip:AddLine("Left click: Open notes", 1, 1, 1)
+        GameTooltip:AddLine("Right click: Settings", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+ 
+    minimapButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+ 
+    PorkNotes.SetMinimapButtonVisible = function(visible)
+        if visible then
+            minimapButton:Show()
+        else
+            minimapButton:Hide()
+        end
+    end
+end
+
 -- Register events
 RegisterEvent("ADDON_LOADED", OnAddonLoaded)
 RegisterEvent("UPDATE_MOUSEOVER_UNIT", OnUpdateMouseoverUnit)
 RegisterChatAlerts()
 RegisterCommands()
 RegisterUnitPopupMenus()
+RegisterMinimapButton()

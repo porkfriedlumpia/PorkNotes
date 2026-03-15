@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(320)
+frame:SetHeight(345)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -20,7 +20,7 @@ frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFFF6600Pork|rNotes - Settings")
+title:SetText("|cFFD893EDPork|rNotes - Settings")
 
 tinsert(UISpecialFrames, frame:GetName())
 
@@ -78,6 +78,9 @@ local function OnCheckboxToggle(name, isChecked)
         ChangeCheckboxState("ChatShowCreatedBy", isChecked)
         ChangeCheckboxState("ChatShowTimestamp", isChecked)
     end
+    if name == "ShowMinimapButton" then
+        PorkNotes.SetMinimapButtonVisible(isChecked)
+    end
 end
 
 local function CreateCheckbox(name, text, x, y)
@@ -110,6 +113,8 @@ CreateCheckbox("ChatShowCreatedBy", "Show note author in chat alert", 40, y); y 
 CreateCheckbox("ChatShowTimestamp", "Show note creation date in chat alert", 40, y); y = y + 35
 
 CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 35
+
+CreateCheckbox("ShowMinimapButton", "Show minimap button", 20, y); y = y + 35
 
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -151,6 +156,7 @@ PorkNotes.ShowSettingsFrame = function()
     ChangeCheckboxState("ChatShowTimestamp", checkboxes.ShowNotesInChat:GetChecked())
 
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
+    checkboxes.ShowMinimapButton:SetChecked(PorkNotes.GetSetting("ShowMinimapButton", true))
 
     UpdateDropdown()
 
