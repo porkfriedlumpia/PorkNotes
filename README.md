@@ -17,7 +17,6 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
 - `/porknotes` or `/pn` — Open the notes window
 - `/pn import` — Import notes from CaramelNotes
-- `/pndebug` — Toggle debug output in chat
 
 ## Features
 
@@ -33,7 +32,7 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
 If you have existing notes in CaramelNotes you can import them into PorkNotes in a few steps:
 
-1. Download and install the CaramelNotes compatibility release: [LINK PLACEHOLDER]
+1. Download and install the CaramelNotes compatibility release: [CaramelNotes 1.3.1](https://github.com/porkfriedlumpia/PorkNotes/archive/refs/tags/CaramelNotes.zip)
 2. Make sure both PorkNotes and CaramelNotes are enabled in your addon list
 3. Log in to the game
 4. Type `/pn import` in chat, or click **Import from CaramelNotes** in the PorkNotes settings window
