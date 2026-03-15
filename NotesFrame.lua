@@ -22,7 +22,7 @@ frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("PorkNotes")
+title:SetText("|cFFFF6600Pork|rNotes")
 
 local resizer = CreateFrame("Button", nil, frame)
 resizer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 5)
@@ -32,7 +32,6 @@ resizer:SetHeight(16)
 resizer:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
 resizer:SetScript("OnMouseUp", function() frame:StopMovingOrSizing() end)
 
--- Makes the window closable by pressing Escape.
 tinsert(UISpecialFrames, frame:GetName())
 
 local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -77,7 +76,6 @@ content:SetWidth(1)
 scrollFrame:SetScrollChild(content)
 
 local lines = {}
-
 local LINE_HEIGHT = 20
 
 local function ResizeEverything()
@@ -129,9 +127,7 @@ rightClickMenu:SetScript("OnLeave", function()
     local frameUnderMouse = GetMouseFocus()
     if frameUnderMouse then
         local parent = frameUnderMouse:GetParent()
-        if parent == rightClickMenu then
-            return
-        end
+        if parent == rightClickMenu then return end
     end
     rightClickMenu:Hide()
 end)
@@ -157,7 +153,6 @@ menuEditNoteButton:SetHeight(20)
 menuEditNoteButton:SetPoint("TOPLEFT", rightClickMenu, "TOPLEFT", 10, -30)
 menuEditNoteButton:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 menuEditNoteButton:SetScript("OnClick", EditNoteClicked)
-
 menuEditNoteButton.text = menuEditNoteButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 menuEditNoteButton.text:SetAllPoints()
 menuEditNoteButton.text:SetText("Edit note")
@@ -170,7 +165,6 @@ menuDeleteNoteButton:SetHeight(20)
 menuDeleteNoteButton:SetPoint("TOPLEFT", rightClickMenu, "TOPLEFT", 10, -50)
 menuDeleteNoteButton:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 menuDeleteNoteButton:SetScript("OnClick", DeleteNoteClicked)
-
 menuDeleteNoteButton.text = menuDeleteNoteButton:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 menuDeleteNoteButton.text:SetAllPoints()
 menuDeleteNoteButton.text:SetText("Delete note")
@@ -180,13 +174,9 @@ menuDeleteNoteButton.text:SetTextColor(1, 0.2, 0.2)
 local function OpenRightClickMenu(playername)
     currentPlayerName = playername
     menuTitle:SetText(playername)
-
     local x, y = GetCursorPosition()
-    x = x - 10
-    y = y + 10
-
     local scale = UIParent:GetEffectiveScale()
-    rightClickMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+    rightClickMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (x - 10) / scale, (y + 10) / scale)
     rightClickMenu:Show()
 end
 
@@ -230,9 +220,7 @@ local math_mod = math.mod or math.fmod
 
 local function CreateLine(leftText, rightText, bottomText, index)
     local lineHeight = LINE_HEIGHT
-    if bottomText then
-        lineHeight = LINE_HEIGHT * 2
-    end
+    if bottomText then lineHeight = LINE_HEIGHT * 2 end
 
     local position = 0
     if index > 0 then
@@ -264,7 +252,6 @@ local function CreateLine(leftText, rightText, bottomText, index)
     local bg = button:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetTexture(1, 1, 1, 1)
-
     button.bg = bg
     if math_mod(index, 2) == 0 then
         button.bgAlpha = 0

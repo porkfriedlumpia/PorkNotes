@@ -1,7 +1,8 @@
--- PorkNotes v0.0.3
+-- PorkNotes v0.1.1
 
 PorkNotes = PorkNotes or {}
 
+local PORKNOTES_VERSION = "0.1.1"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -86,7 +87,7 @@ PorkNotes.ImportFromCaramelNotes = function()
     PorkNotes.UpdateNotesFrame()
 end
 
--- Check note count across all realms
+-- Check if PorkNotes has any notes across all realms
 local function HasAnyNotes()
     if not PorkNotes_Data then return false end
     for _, realmData in pairs(PorkNotes_Data) do
@@ -111,6 +112,8 @@ local function OnAddonLoaded()
         if CaramelNotes_Data and not HasAnyNotes() then
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r CaramelNotes data detected. Type |cffffcc00/pn import|r to import your notes.")
         end
+
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r v" .. PORKNOTES_VERSION .. " loaded. Type |cffffcc00/pn|r to open.")
     end
 end
 
@@ -210,6 +213,25 @@ local function SendChatFrame1(alertText)
     end
 end
 
+-- Build chat alert metadata suffix based on settings
+local function BuildAlertMetadata(note)
+    local showCreatedBy = PorkNotes.GetSetting("ChatShowCreatedBy", false)
+    local showTimestamp = PorkNotes.GetSetting("ChatShowTimestamp", false)
+
+    local meta = {}
+    if showCreatedBy and note.createdBy then
+        table.insert(meta, "by " .. note.createdBy)
+    end
+    if showTimestamp and note.created then
+        table.insert(meta, date("%Y-%m-%d", note.created))
+    end
+
+    if table.getn(meta) > 0 then
+        return " |cff888888(" .. table.concat(meta, ", ") .. ")|r"
+    end
+    return ""
+end
+
 -- Chat alerts
 local function RegisterChatAlerts()
     local frame = CreateFrame("Frame")
@@ -249,7 +271,7 @@ local function RegisterChatAlerts()
         local note = PorkNotes.GetPlayerNote(author)
         if not note then return end
 
-        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffaaaaaa: " .. note.text .. "|r"
+        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffaaaaaa: " .. note.text .. "|r" .. BuildAlertMetadata(note)
 
         -- Route World and LookingForGroup channels to user-configured chat frame
         if event == "CHAT_MSG_CHANNEL" then

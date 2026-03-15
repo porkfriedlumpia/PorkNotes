@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(280)
+frame:SetHeight(320)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -20,9 +20,8 @@ frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("PorkNotes - Settings")
+title:SetText("|cFFFF6600Pork|rNotes - Settings")
 
--- Makes the window closable by pressing Escape.
 tinsert(UISpecialFrames, frame:GetName())
 
 local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -65,8 +64,20 @@ local function DisableCheckbox(checkbox)
     checkbox.textElement:SetTextColor(0.5, 0.5, 0.5)
 end
 
+local function ChangeCheckboxState(checkboxName, isEnabled)
+    if isEnabled then
+        EnableCheckbox(checkboxes[checkboxName])
+    else
+        DisableCheckbox(checkboxes[checkboxName])
+    end
+end
+
 local function OnCheckboxToggle(name, isChecked)
     PorkNotes.SetSetting(name, isChecked)
+    if name == "ShowNotesInChat" then
+        ChangeCheckboxState("ChatShowCreatedBy", isChecked)
+        ChangeCheckboxState("ChatShowCreatedAtZone", isChecked)
+    end
 end
 
 local function CreateCheckbox(name, text, x, y)
@@ -83,7 +94,6 @@ local function CreateCheckbox(name, text, x, y)
     checkbox:SetHitRectInsets(0, -checkbox.textElement:GetStringWidth(), 0, 0)
 
     checkbox:SetScript("OnClick", function()
-        -- GetChecked() returns 1 or nil, not a boolean
         OnCheckboxToggle(name, checkbox:GetChecked() ~= nil)
     end)
 
@@ -95,7 +105,9 @@ local y = 40
 CreateCheckbox("NotesShowCreatedBy", "Show who created the note in the main window", 20, y); y = y + 25
 CreateCheckbox("NotesShowCreatedAtZone", "Show where the note was created in the main window", 20, y); y = y + 35
 
-CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 35
+CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 25
+CreateCheckbox("ChatShowCreatedBy", "Show note author in chat alert", 40, y); y = y + 25
+CreateCheckbox("ChatShowCreatedAtZone", "Show note location in chat alert", 40, y); y = y + 35
 
 CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 35
 
@@ -131,7 +143,13 @@ end
 PorkNotes.ShowSettingsFrame = function()
     checkboxes.NotesShowCreatedBy:SetChecked(PorkNotes.GetSetting("NotesShowCreatedBy", false))
     checkboxes.NotesShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("NotesShowCreatedAtZone", false))
+
     checkboxes.ShowNotesInChat:SetChecked(PorkNotes.GetSetting("ShowNotesInChat", true))
+    checkboxes.ChatShowCreatedBy:SetChecked(PorkNotes.GetSetting("ChatShowCreatedBy", false))
+    checkboxes.ChatShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("ChatShowCreatedAtZone", false))
+    ChangeCheckboxState("ChatShowCreatedBy", checkboxes.ShowNotesInChat:GetChecked())
+    ChangeCheckboxState("ChatShowCreatedAtZone", checkboxes.ShowNotesInChat:GetChecked())
+
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
 
     UpdateDropdown()
