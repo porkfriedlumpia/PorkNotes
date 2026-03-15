@@ -272,7 +272,7 @@ local function RegisterChatAlerts()
         local note = PorkNotes.GetPlayerNote(author)
         if not note then return end
 
-        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffaaaaaa: " .. note.text .. "|r" .. BuildAlertMetadata(note)
+        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffffffff: " .. note.text .. "|r" .. BuildAlertMetadata(note)
 
         -- Route World and LookingForGroup channels to user-configured chat frame
         if event == "CHAT_MSG_CHANNEL" then
