@@ -5,7 +5,15 @@ frame:SetWidth(300)
 frame:SetHeight(140)
 frame:SetFrameStrata("DIALOG")
 frame:SetPoint("CENTER", UIParent, "CENTER")
+frame:SetMovable(true)
 frame:EnableMouse(true)
+frame:RegisterForDrag("LeftButton")
+frame:SetScript("OnDragStart", function() this:StartMoving() end)
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = frame:GetPoint()
+    PorkNotes.SetSetting("CreateNoteFramePos", point .. "," .. relativePoint .. "," .. math.floor(x) .. "," .. math.floor(y))
+end)
 frame:SetBackdrop({
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -139,5 +147,17 @@ submitButton:SetScript("OnClick", OnSubmit)
 PorkNotes.ShowCreateFrame = function()
     playerEditBox:SetText("")
     textEditBox:SetText("")
+    frame:ClearAllPoints()
+    local saved = PorkNotes.GetSetting("CreateNoteFramePos", nil)
+    if saved then
+        local _, _, point, relativePoint, x, y = string.find(saved, "([^,]+),([^,]+),(-?%d+),(-?%d+)")
+        if point then
+            frame:SetPoint(point, UIParent, relativePoint, tonumber(x), tonumber(y))
+        else
+            frame:SetPoint("CENTER", UIParent)
+        end
+    else
+        frame:SetPoint("CENTER", UIParent)
+    end
     frame:Show()
 end

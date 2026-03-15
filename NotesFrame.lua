@@ -17,12 +17,16 @@ frame:SetBackdrop({
 frame:SetBackdropColor(0, 0, 0, 0.8)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", function() this:StartMoving() end)
-frame:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = frame:GetPoint()
+    PorkNotes.SetSetting("NotesFramePos", point .. "," .. relativePoint .. "," .. math.floor(x) .. "," .. math.floor(y))
+end)
 frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFFF6600Pork|rNotes")
+title:SetText("|cFFD893EDPork|r|cFFFFBB00Notes|r")
 
 local resizer = CreateFrame("Button", nil, frame)
 resizer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 5)
@@ -133,7 +137,7 @@ rightClickMenu:SetScript("OnLeave", function()
 end)
 
 function EditNoteClicked()
-    PorkNotes.ShowEditFrame(currentPlayerName)
+    PorkNotes.ShowNoteDetailFrame(currentPlayerName)
     rightClickMenu:Hide()
 end
 
@@ -191,7 +195,7 @@ end)
 
 local function OnLineClick()
     if arg1 == "LeftButton" then
-        PorkNotes.ShowEditFrame(this.leftLabel:GetText())
+        PorkNotes.ShowNoteDetailFrame(this.leftLabel:GetText())
     else
         OpenRightClickMenu(this.leftLabel:GetText())
     end
@@ -334,7 +338,17 @@ end
 PorkNotes.ShowNotesFrame = function()
     RefreshNotes()
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", UIParent)
+    local saved = PorkNotes.GetSetting("NotesFramePos", nil)
+    if saved then
+        local _, _, point, relativePoint, x, y = string.find(saved, "([^,]+),([^,]+),(-?%d+),(-?%d+)")
+        if point then
+            frame:SetPoint(point, UIParent, relativePoint, tonumber(x), tonumber(y))
+        else
+            frame:SetPoint("CENTER", UIParent)
+        end
+    else
+        frame:SetPoint("CENTER", UIParent)
+    end
     frame:Show()
 end
 

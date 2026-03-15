@@ -1,9 +1,9 @@
--- PorkNotes v0.1.2
+-- PorkNotes v0.2.0
 -- by MrToffee and porkfriedlumpia
 
 PorkNotes = PorkNotes or {}
 
-local PORKNOTES_VERSION = "0.1.2"
+local PORKNOTES_VERSION = "0.2.0"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -36,11 +36,24 @@ PorkNotes.SetPlayerNote = function(playername, text)
 
     if text and text ~= "" then
         if not PorkNotes_Data[realm].notes[playername] then
+            -- New note — no history to record
             PorkNotes_Data[realm].notes[playername] = {
                 created = time(),
                 createdBy = UnitName("player"),
-                createdAtZone = GetRealZoneText()
+                createdAtZone = GetRealZoneText(),
+                history = {}
             }
+        else
+            -- Existing note — archive current text to history before overwriting
+            local existing = PorkNotes_Data[realm].notes[playername]
+            if existing.text and existing.text ~= "" then
+                existing.history = existing.history or {}
+                table.insert(existing.history, {
+                    text = existing.text,
+                    editedBy = existing.updatedBy or existing.createdBy,
+                    editedAt = existing.updated or existing.created
+                })
+            end
         end
         PorkNotes_Data[realm].notes[playername].text = text
         PorkNotes_Data[realm].notes[playername].updated = time()
@@ -122,7 +135,7 @@ end
 local originalSetItemRef = SetItemRef
 function SetItemRef(link, text, button)
     if string.sub(link, 1, 10) == "porknotes:" then
-        PorkNotes.ShowEditFrame(string.sub(link, 11))
+        PorkNotes.ShowNoteDetailFrame(string.sub(link, 11))
     else
         originalSetItemRef(link, text, button)
     end
@@ -184,7 +197,7 @@ hooksecurefunc("UnitPopup_OnClick", function()
         local menu = UIDROPDOWNMENU_INIT_MENU
         if type(menu) == "string" then menu = _G[menu] end
         local playername = menu and menu.name
-        if playername then PorkNotes.ShowEditFrame(playername) end
+        if playername then PorkNotes.ShowNoteDetailFrame(playername) end
     end
 end)
 
@@ -272,7 +285,7 @@ local function RegisterChatAlerts()
         local note = PorkNotes.GetPlayerNote(author)
         if not note then return end
 
-        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffffffff: " .. note.text .. "|r" .. BuildAlertMetadata(note)
+        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffaaaaaa: " .. note.text .. "|r" .. BuildAlertMetadata(note)
 
         -- Route World and LookingForGroup channels to user-configured chat frame
         if event == "CHAT_MSG_CHANNEL" then
@@ -308,26 +321,26 @@ end
 -- Minimap button
 local function RegisterMinimapButton()
     local minimapButton = CreateFrame("Button", "PorkNotes_MinimapButton", Minimap)
-    minimapButton:SetWidth(24)
-    minimapButton:SetHeight(24)
+    minimapButton:SetWidth(30)
+    minimapButton:SetHeight(30)
     minimapButton:SetFrameStrata("MEDIUM")
     minimapButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 20, -20)
     minimapButton:SetNormalTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetPushedTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
- 
+
     local border = minimapButton:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     border:SetWidth(50)
     border:SetHeight(50)
     border:SetPoint("CENTER", minimapButton, "CENTER", 10, -10)
- 
+
     if PorkNotes.GetSetting("ShowMinimapButton", true) then
         minimapButton:Show()
     else
         minimapButton:Hide()
     end
- 
+
     minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     minimapButton:SetScript("OnClick", function()
         if arg1 == "LeftButton" then
@@ -336,7 +349,7 @@ local function RegisterMinimapButton()
             PorkNotes.ShowSettingsFrame()
         end
     end)
- 
+
     minimapButton:SetScript("OnEnter", function()
         GameTooltip:SetOwner(minimapButton, "ANCHOR_LEFT")
         GameTooltip:SetText("PorkNotes")
@@ -344,11 +357,11 @@ local function RegisterMinimapButton()
         GameTooltip:AddLine("Right click: Settings", 1, 1, 1)
         GameTooltip:Show()
     end)
- 
+
     minimapButton:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
- 
+
     PorkNotes.SetMinimapButtonVisible = function(visible)
         if visible then
             minimapButton:Show()

@@ -15,12 +15,16 @@ frame:SetBackdrop({
 frame:SetBackdropColor(0, 0, 0, 0.8)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", function() this:StartMoving() end)
-frame:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = frame:GetPoint()
+    PorkNotes.SetSetting("SettingsFramePos", point .. "," .. relativePoint .. "," .. math.floor(x) .. "," .. math.floor(y))
+end)
 frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFD893EDPork|rNotes - Settings")
+title:SetText("|cFFD893EDPork|r|cFFFFBB00Notes|r|cFFFFFFFF - Settings")
 
 tinsert(UISpecialFrames, frame:GetName())
 
@@ -161,6 +165,16 @@ PorkNotes.ShowSettingsFrame = function()
     UpdateDropdown()
 
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", UIParent)
+    local saved = PorkNotes.GetSetting("SettingsFramePos", nil)
+    if saved then
+        local _, _, point, relativePoint, x, y = string.find(saved, "([^,]+),([^,]+),(-?%d+),(-?%d+)")
+        if point then
+            frame:SetPoint(point, UIParent, relativePoint, tonumber(x), tonumber(y))
+        else
+            frame:SetPoint("CENTER", UIParent)
+        end
+    else
+        frame:SetPoint("CENTER", UIParent)
+    end
     frame:Show()
 end
