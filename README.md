@@ -8,6 +8,15 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
 ## Installation
 
+### GitAddonsManager
+
+1. Open GitAddonsManager and click the + to download an addon from a git repository.
+2. Paste the git link to this repository into the prompt. (https://github.com/porkfriedlumpia/PorkNotes.git)
+3. Press OK and the addon will download automatically to your AddOns directory.
+4. Log in and type `/pn` or `/porknotes` to open
+
+### Manual installation
+
 1. Download and extract the zip
 2. Rename the folder to `PorkNotes` if it isn't already
 3. Place the `PorkNotes` folder in your `Interface/AddOns` directory
