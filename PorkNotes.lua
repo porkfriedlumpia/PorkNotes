@@ -1,7 +1,8 @@
--- PorkNotes v0.0.3
+-- PorkNotes v0.1.1
 
 PorkNotes = PorkNotes or {}
 
+local PORKNOTES_VERSION = "0.1.1"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -111,6 +112,7 @@ local function OnAddonLoaded()
         if CaramelNotes_Data and not HasAnyNotes() then
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r CaramelNotes data detected. Type |cffffcc00/pn import|r to import your notes.")
         end
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r v" .. PORKNOTES_VERSION .. " loaded. Type |cffffcc00/pn|r to open.")
     end
 end
 
