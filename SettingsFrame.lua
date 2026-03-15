@@ -76,7 +76,7 @@ local function OnCheckboxToggle(name, isChecked)
     PorkNotes.SetSetting(name, isChecked)
     if name == "ShowNotesInChat" then
         ChangeCheckboxState("ChatShowCreatedBy", isChecked)
-        ChangeCheckboxState("ChatShowCreatedAtZone", isChecked)
+        ChangeCheckboxState("ChatShowTimestamp", isChecked)
     end
 end
 
@@ -107,7 +107,7 @@ CreateCheckbox("NotesShowCreatedAtZone", "Show where the note was created in the
 
 CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 25
 CreateCheckbox("ChatShowCreatedBy", "Show note author in chat alert", 40, y); y = y + 25
-CreateCheckbox("ChatShowCreatedAtZone", "Show note location in chat alert", 40, y); y = y + 35
+CreateCheckbox("ChatShowTimestamp", "Show note creation date in chat alert", 40, y); y = y + 35
 
 CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 35
 
@@ -146,9 +146,9 @@ PorkNotes.ShowSettingsFrame = function()
 
     checkboxes.ShowNotesInChat:SetChecked(PorkNotes.GetSetting("ShowNotesInChat", true))
     checkboxes.ChatShowCreatedBy:SetChecked(PorkNotes.GetSetting("ChatShowCreatedBy", false))
-    checkboxes.ChatShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("ChatShowCreatedAtZone", false))
+    checkboxes.ChatShowTimestamp:SetChecked(PorkNotes.GetSetting("ChatShowTimestamp", false))
     ChangeCheckboxState("ChatShowCreatedBy", checkboxes.ShowNotesInChat:GetChecked())
-    ChangeCheckboxState("ChatShowCreatedAtZone", checkboxes.ShowNotesInChat:GetChecked())
+    ChangeCheckboxState("ChatShowTimestamp", checkboxes.ShowNotesInChat:GetChecked())
 
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
 
