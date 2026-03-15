@@ -1,9 +1,9 @@
--- PorkNotes v0.2.0
+-- PorkNotes v0.3.0
 -- by MrToffee and porkfriedlumpia
 
 PorkNotes = PorkNotes or {}
 
-local PORKNOTES_VERSION = "0.2.0"
+local PORKNOTES_VERSION = "0.3.0"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -319,12 +319,12 @@ local function RegisterChatAlerts()
 end
 
 -- Minimap button
+-- Minimap button with drag-to-reposition support
 local function RegisterMinimapButton()
     local minimapButton = CreateFrame("Button", "PorkNotes_MinimapButton", Minimap)
     minimapButton:SetWidth(30)
     minimapButton:SetHeight(30)
     minimapButton:SetFrameStrata("MEDIUM")
-    minimapButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 20, -20)
     minimapButton:SetNormalTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetPushedTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
@@ -335,14 +335,53 @@ local function RegisterMinimapButton()
     border:SetHeight(50)
     border:SetPoint("CENTER", minimapButton, "CENTER", 10, -10)
 
+    -- Position button on minimap edge at a given angle (degrees)
+    local function SetMinimapAngle(angle)
+        local rad = math.rad(angle)
+        local radius = 80
+        local x = math.cos(rad) * radius
+        local y = math.sin(rad) * radius
+        minimapButton:ClearAllPoints()
+        minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    end
+
+    -- Load saved angle or default to top-right
+    local savedAngle = PorkNotes.GetSetting("MinimapButtonAngle", 45)
+    SetMinimapAngle(savedAngle)
+
     if PorkNotes.GetSetting("ShowMinimapButton", true) then
         minimapButton:Show()
     else
         minimapButton:Hide()
     end
 
+    -- Drag to reposition around minimap edge
+    local isDragging = false
     minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    minimapButton:RegisterForDrag("LeftButton")
+
+    minimapButton:SetScript("OnDragStart", function()
+        isDragging = true
+    end)
+
+    minimapButton:SetScript("OnDragStop", function()
+        isDragging = false
+    end)
+
+    minimapButton:SetScript("OnUpdate", function()
+        if not isDragging then return end
+        local mx, my = Minimap:GetCenter()
+        local cx, cy = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        cx = cx / scale
+        cy = cy / scale
+        local angle = math.deg(math.atan2(cy - my, cx - mx))
+        SetMinimapAngle(angle)
+        PorkNotes.SetSetting("MinimapButtonAngle", angle)
+    end)
+
     minimapButton:SetScript("OnClick", function()
+        if isDragging then return end
         if arg1 == "LeftButton" then
             PorkNotes.ShowNotesFrame()
         else
@@ -355,6 +394,7 @@ local function RegisterMinimapButton()
         GameTooltip:SetText("PorkNotes")
         GameTooltip:AddLine("Left click: Open notes", 1, 1, 1)
         GameTooltip:AddLine("Right click: Settings", 1, 1, 1)
+        GameTooltip:AddLine("Drag: Reposition", 0.6, 0.6, 0.6)
         GameTooltip:Show()
     end)
 
