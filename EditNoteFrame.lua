@@ -33,6 +33,7 @@ editBox:SetHeight(30)
 editBox:SetPoint("TOP", 0, -30)
 editBox:SetAutoFocus(true)
 editBox:SetFontObject(GameFontNormal)
+editBox:SetMaxLetters(200)
 editBox:SetTextInsets(5, 5, 3, 3)
 editBox:SetTextColor(1, 1, 1)
 editBox:SetBackdrop({

@@ -25,8 +25,9 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 - Notes appear in player tooltips on hover
 - Chat alerts when a noted player sends a message, with a clickable link to edit their note
 - Right-click any player to add or edit their note
+- Minimap button for quick access — left click opens notes, right click opens settings
 - World and LookingForGroup channel alerts route to a configurable chat frame
-- Settings window to toggle tooltip display, chat alerts, and metadata display
+- Settings window to toggle tooltip display, chat alerts, note author and timestamp in alerts, and metadata display in the main window
 
 ## Importing from CaramelNotes
 

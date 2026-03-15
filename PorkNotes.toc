@@ -1,7 +1,7 @@
 ## Interface: 11200
-## Title: PorkNotes
+## Title: PorkNotes v0.1.1
 ## Author: porkfriedlumpia
-## Notes: Write notes about other players. Based on CaramelNotes by MrToffee.
+## Notes: Write notes about other players.
 ## Version: 0.1.1
 ## SavedVariables: PorkNotes_Data, PorkNotes_Settings
 
