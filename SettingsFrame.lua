@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(340)
+frame:SetHeight(280)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -66,14 +66,6 @@ end
 
 local function OnCheckboxToggle(name, isChecked)
     PorkNotes.SetSetting(name, isChecked)
-    if name == "ShowNotesInChat" then
-        ChangeCheckboxState("ChatShowCreatedBy", isChecked)
-        ChangeCheckboxState("ChatShowCreatedAtZone", isChecked)
-    end
-    if name == "ShowNotesInTooltips" then
-        ChangeCheckboxState("TooltipsShowCreatedBy", isChecked)
-        ChangeCheckboxState("TooltipsShowCreatedAtZone", isChecked)
-    end
 end
 
 local function CreateCheckbox(name, text, x, y)
@@ -102,13 +94,9 @@ local y = 40
 CreateCheckbox("NotesShowCreatedBy", "Show who created the note in the main window", 20, y); y = y + 25
 CreateCheckbox("NotesShowCreatedAtZone", "Show where the note was created in the main window", 20, y); y = y + 35
 
-CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 25
-CreateCheckbox("ChatShowCreatedBy", "Show who created the note", 40, y); y = y + 25
-CreateCheckbox("ChatShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 35
+CreateCheckbox("ShowNotesInChat", "Display player notes in chat", 20, y); y = y + 35
 
-CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 25
-CreateCheckbox("TooltipsShowCreatedBy", "Show who created the note", 40, y); y = y + 25
-CreateCheckbox("TooltipsShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 35
+CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 35
 
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -142,18 +130,8 @@ end
 PorkNotes.ShowSettingsFrame = function()
     checkboxes.NotesShowCreatedBy:SetChecked(PorkNotes.GetSetting("NotesShowCreatedBy", false))
     checkboxes.NotesShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("NotesShowCreatedAtZone", false))
-
     checkboxes.ShowNotesInChat:SetChecked(PorkNotes.GetSetting("ShowNotesInChat", true))
-    checkboxes.ChatShowCreatedBy:SetChecked(PorkNotes.GetSetting("ChatShowCreatedBy", false))
-    checkboxes.ChatShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("ChatShowCreatedAtZone", false))
-    ChangeCheckboxState("ChatShowCreatedBy", checkboxes.ShowNotesInChat:GetChecked())
-    ChangeCheckboxState("ChatShowCreatedAtZone", checkboxes.ShowNotesInChat:GetChecked())
-
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
-    checkboxes.TooltipsShowCreatedBy:SetChecked(PorkNotes.GetSetting("TooltipsShowCreatedBy", false))
-    checkboxes.TooltipsShowCreatedAtZone:SetChecked(PorkNotes.GetSetting("TooltipsShowCreatedAtZone", false))
-    ChangeCheckboxState("TooltipsShowCreatedBy", checkboxes.ShowNotesInTooltips:GetChecked())
-    ChangeCheckboxState("TooltipsShowCreatedAtZone", checkboxes.ShowNotesInTooltips:GetChecked())
 
     UpdateDropdown()
 
