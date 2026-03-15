@@ -1,8 +1,6 @@
-local _G = getfenv(0)
-
 local frame = CreateFrame("Frame", "CaramelNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(300)
+frame:SetHeight(340)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -100,7 +98,7 @@ local function CreateCheckbox(name, text, x, y)
     checkboxes[name] = checkbox
 end
 
-y = 40
+local y = 40
 CreateCheckbox("NotesShowCreatedBy", "Show who created the note in the main window", 20, y); y = y + 25
 CreateCheckbox("NotesShowCreatedAtZone", "Show where the note was created in the main window", 20, y); y = y + 35
 
@@ -110,9 +108,38 @@ CreateCheckbox("ChatShowCreatedAtZone", "Show where the note was created", 40, y
 
 CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y); y = y + 25
 CreateCheckbox("TooltipsShowCreatedBy", "Show who created the note", 40, y); y = y + 25
-CreateCheckbox("TooltipsShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 25
+CreateCheckbox("TooltipsShowCreatedAtZone", "Show where the note was created", 40, y); y = y + 35
 
-CaramelNotes.ShowSettingsFrame = function ()
+-- World/LFG chat frame dropdown
+local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+dropdownLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
+dropdownLabel:SetText("Route World/LFG alerts to:")
+
+local dropdown = CreateFrame("Frame", frame:GetName() .. "_WorldChatDropdown", frame, "UIDropDownMenuTemplate")
+dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 14))
+UIDropDownMenu_SetWidth(100, dropdown)
+
+local function UpdateDropdown()
+    local currentValue = CaramelNotes.GetSetting("WorldChatFrame", 3)
+    UIDropDownMenu_Initialize(dropdown, function()
+        for i = 1, 10 do
+            local info = {}
+            info.text = "Chat Frame " .. i
+            info.value = i
+            info.checked = (i == currentValue)
+            info.func = function()
+                local selected = this.value
+                CaramelNotes.SetSetting("WorldChatFrame", selected)
+                UIDropDownMenu_SetText("Chat Frame " .. selected, dropdown)
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+    UIDropDownMenu_SetText("Chat Frame " .. currentValue, dropdown)
+end
+
+CaramelNotes.ShowSettingsFrame = function()
     checkboxes.NotesShowCreatedBy:SetChecked(CaramelNotes.GetSetting("NotesShowCreatedBy", false))
     checkboxes.NotesShowCreatedAtZone:SetChecked(CaramelNotes.GetSetting("NotesShowCreatedAtZone", false))
 
@@ -127,6 +154,8 @@ CaramelNotes.ShowSettingsFrame = function ()
     checkboxes.TooltipsShowCreatedAtZone:SetChecked(CaramelNotes.GetSetting("TooltipsShowCreatedAtZone", false))
     ChangeCheckboxState("TooltipsShowCreatedBy", checkboxes.ShowNotesInTooltips:GetChecked())
     ChangeCheckboxState("TooltipsShowCreatedAtZone", checkboxes.ShowNotesInTooltips:GetChecked())
+
+    UpdateDropdown()
 
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent)
