@@ -2,7 +2,7 @@
 
 Write notes about other players.
 
-A plugin for TurtleWoW (1.12 / Lua 5.0).
+An addon for TurtleWoW (1.12 / Lua 5.0).
 
 Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
@@ -43,7 +43,7 @@ Based on [CaramelNotes](https://github.com/MrToffee/CaramelNotes) by MrToffee.
 
 If you have existing notes in CaramelNotes you can import them into PorkNotes in a few steps:
 
-1. Download and install the CaramelNotes compatibility release: [CaramelNotes 1.3.1](https://github.com/porkfriedlumpia/PorkNotes/archive/refs/tags/CaramelNotes.zip)
+1. **(Not necessary if you already have CaramelNotes installed.)** Download and install the CaramelNotes compatibility release: [CaramelNotes 1.3.1](https://github.com/porkfriedlumpia/PorkNotes/archive/refs/tags/CaramelNotes.zip)
 2. Extract the folder to your AddOns directory and rename it to `CaramelNotes`
 3. Make sure both PorkNotes and CaramelNotes are enabled in your addon list
 4. Log in to the game
