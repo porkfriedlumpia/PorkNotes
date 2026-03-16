@@ -122,16 +122,17 @@ CreateCheckbox("ShowMinimapButton", "Show minimap button", 20, y); y = y + 35
 
 CreateCheckbox("SyncEnabled", "Receive synced notes from other players", 20, y); y = y + 35
 
-CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 25
+CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 35
 CreateCheckbox("SyncAutoPopup", "Auto-open review window on sync receive (out of combat only)", 20, y); y = y + 35
 
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 dropdownLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
 dropdownLabel:SetText("Route World/LFG alerts to:")
+dropdownLabel:SetTextColor(1, 0.82, 0)
 
 local dropdown = CreateFrame("Frame", frame:GetName() .. "_WorldChatDropdown", frame, "UIDropDownMenuTemplate")
-dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 14))
+dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -y)
 UIDropDownMenu_SetWidth(100, dropdown)
 y = y + 40
 
@@ -159,10 +160,10 @@ end
 local historyLimitLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 historyLimitLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
 historyLimitLabel:SetText("Note history limit:")
-historyLimitLabel:SetTextColor(1, 1, 1)
+historyLimitLabel:SetTextColor(1, 0.82, 0)
 
 local historyDropdown = CreateFrame("Frame", frame:GetName() .. "_HistoryDropdown", frame, "UIDropDownMenuTemplate")
-historyDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 6))
+historyDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -y)
 UIDropDownMenu_SetWidth(100, historyDropdown)
 
 local historyOptions = {

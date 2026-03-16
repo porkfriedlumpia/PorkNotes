@@ -65,52 +65,14 @@ playerCounter:SetText("0 / 12")
 playerCounter:SetTextColor(0.6, 0.6, 0.6)
 
 -- Duplicate warning label (shown when player name matches existing note)
+-- Position below the counter, in the left area
 local duplicateWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-duplicateWarning:SetPoint("TOPRIGHT", playerCounter, "BOTTOMRIGHT", 0, -4)
+duplicateWarning:SetPoint("TOPLEFT", 22, -65)
 duplicateWarning:SetTextColor(1, 0.6, 0)
 duplicateWarning:SetText("|cffff9900⚠ Note already exists for this player|r")
 duplicateWarning:Hide()
 
-
-playerEditBox:SetScript("OnTextChanged", function()
-    local text = playerEditBox:GetText()
-    -- Auto-capitalize and clean
-    if text and text ~= "" then
-        local firstLetter = string.sub(text, 1, 1)
-        local remainingLetters = string.sub(text, 2)
-        local capitalized = string.upper(firstLetter) .. string.lower(remainingLetters)
-        local cleaned = string.gsub(capitalized, "[^A-Za-z]", "")
-        if text ~= cleaned then
-            playerEditBox:SetText(cleaned)
-            return
-        end
-    end
-    -- Update counter and check for duplicate
-    local current = string.len(playerEditBox:GetText())
-    playerCounter:SetText(current .. " / 12")
-    if current >= 10 then
-        playerCounter:SetTextColor(1, 0.3, 0.3)
-    else
-        playerCounter:SetTextColor(0.6, 0.6, 0.6)
-    end
-    
-    -- Check if note already exists for this player
-    if current > 0 then
-        local existingNote = PorkNotes.GetPlayerNote(text)
-        if existingNote then
-            duplicateWarning:Show()
-            playerEditBox:SetBackdropColor(0.3, 0.3, 0)  -- Dark yellow tint
-        else
-            duplicateWarning:Hide()
-            playerEditBox:SetBackdropColor(0, 0, 0, 0.5)  -- Normal color
-        end
-    else
-        duplicateWarning:Hide()
-        playerEditBox:SetBackdropColor(0, 0, 0, 0.5)
-    end
-end)
-
--- Note text editbox
+-- Note text editbox (moved up so it's defined before playerEditBox script uses it)
 local textEditBox = CreateFrame("EditBox", nil, frame)
 textEditBox:SetWidth(260)
 textEditBox:SetHeight(30)
@@ -141,6 +103,49 @@ textEditBox:SetScript("OnTextChanged", function()
         textCounter:SetTextColor(1, 0.3, 0.3)
     else
         textCounter:SetTextColor(0.6, 0.6, 0.6)
+    end
+end)
+
+
+playerEditBox:SetScript("OnTextChanged", function()
+    local text = playerEditBox:GetText()
+    -- Auto-capitalize and clean
+    if text and text ~= "" then
+        local firstLetter = string.sub(text, 1, 1)
+        local remainingLetters = string.sub(text, 2)
+        local capitalized = string.upper(firstLetter) .. string.lower(remainingLetters)
+        local cleaned = string.gsub(capitalized, "[^A-Za-z]", "")
+        if text ~= cleaned then
+            playerEditBox:SetText(cleaned)
+            return
+        end
+    end
+    -- Update counter and check for duplicate
+    local current = string.len(playerEditBox:GetText())
+    playerCounter:SetText(current .. " / 12")
+    if current >= 10 then
+        playerCounter:SetTextColor(1, 0.3, 0.3)
+    else
+        playerCounter:SetTextColor(0.6, 0.6, 0.6)
+    end
+    
+    -- Check if note already exists for this player
+    if current > 0 then
+        local existingNote = PorkNotes.GetPlayerNote(text)
+        if existingNote then
+            duplicateWarning:Show()
+            playerEditBox:SetBackdropColor(0.3, 0.3, 0)  -- Dark yellow tint
+            -- Auto-fill the note text with existing note
+            textEditBox:SetText(existingNote.text or "")
+            local textLen = string.len(textEditBox:GetText())
+            textCounter:SetText(textLen .. " / 150")
+        else
+            duplicateWarning:Hide()
+            playerEditBox:SetBackdropColor(0, 0, 0, 0.5)  -- Normal color
+        end
+    else
+        duplicateWarning:Hide()
+        playerEditBox:SetBackdropColor(0, 0, 0, 0.5)
     end
 end)
 
