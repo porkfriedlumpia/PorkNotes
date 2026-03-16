@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(345)
+frame:SetHeight(460)
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -15,12 +15,16 @@ frame:SetBackdrop({
 frame:SetBackdropColor(0, 0, 0, 0.8)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", function() this:StartMoving() end)
-frame:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = frame:GetPoint()
+    PorkNotes.SetSetting("SettingsFramePos", point .. "," .. relativePoint .. "," .. math.floor(x) .. "," .. math.floor(y))
+end)
 frame:Hide()
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", 0, -15)
-title:SetText("|cFFD893EDPork|rNotes - Settings")
+title:SetText("|cFFD893EDPork|r|cFFFFBB00Notes|r|cFFFFFFFF - Settings")
 
 tinsert(UISpecialFrames, frame:GetName())
 
@@ -116,6 +120,9 @@ CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y)
 
 CreateCheckbox("ShowMinimapButton", "Show minimap button", 20, y); y = y + 35
 
+CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 25
+CreateCheckbox("SyncAutoPopup", "Auto-open review window on sync receive (out of combat only)", 20, y); y = y + 35
+
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 dropdownLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
@@ -124,6 +131,7 @@ dropdownLabel:SetText("Route World/LFG alerts to:")
 local dropdown = CreateFrame("Frame", frame:GetName() .. "_WorldChatDropdown", frame, "UIDropDownMenuTemplate")
 dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 14))
 UIDropDownMenu_SetWidth(100, dropdown)
+y = y + 40
 
 local function UpdateDropdown()
     local currentValue = PorkNotes.GetSetting("WorldChatFrame", 3)
@@ -133,16 +141,60 @@ local function UpdateDropdown()
             info.text = "Chat Frame " .. i
             info.value = i
             info.checked = (i == currentValue)
+            local frameIndex = i
             info.func = function()
-                local selected = this.value
-                PorkNotes.SetSetting("WorldChatFrame", selected)
-                UIDropDownMenu_SetText("Chat Frame " .. selected, dropdown)
+                PorkNotes.SetSetting("WorldChatFrame", frameIndex)
+                UIDropDownMenu_SetText("Chat Frame " .. frameIndex, dropdown)
                 CloseDropDownMenus()
             end
             UIDropDownMenu_AddButton(info)
         end
     end)
     UIDropDownMenu_SetText("Chat Frame " .. currentValue, dropdown)
+end
+
+-- History limit dropdown
+local historyLimitLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+historyLimitLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
+historyLimitLabel:SetText("Note history limit:")
+historyLimitLabel:SetTextColor(1, 1, 1)
+
+local historyDropdown = CreateFrame("Frame", frame:GetName() .. "_HistoryDropdown", frame, "UIDropDownMenuTemplate")
+historyDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 6))
+UIDropDownMenu_SetWidth(100, historyDropdown)
+
+local historyOptions = {
+    { text = "No history", value = 0  },
+    { text = "Last 5",     value = 5  },
+    { text = "Last 10",    value = 10 },
+    { text = "Last 20",    value = 20 },
+    { text = "Last 50",    value = 50 },
+    { text = "Unlimited",  value = -1 },
+}
+
+local function UpdateHistoryDropdown()
+    local current = PorkNotes.GetSetting("HistoryLimit", -1)
+    UIDropDownMenu_Initialize(historyDropdown, function()
+        for _, opt in ipairs(historyOptions) do
+            local info = {}
+            info.text    = opt.text
+            info.value   = opt.value
+            info.checked = (opt.value == current)
+            local optValue = opt.value
+            local optText  = opt.text
+            info.func = function()
+                PorkNotes.SetSetting("HistoryLimit", optValue)
+                UIDropDownMenu_SetText(optText, historyDropdown)
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end)
+    local label = "Unlimited"
+    for _, opt in ipairs(historyOptions) do
+        if opt.value == current then label = opt.text break end
+    end
+    UIDropDownMenu_SetText(label, historyDropdown)
 end
 
 PorkNotes.ShowSettingsFrame = function()
@@ -157,10 +209,23 @@ PorkNotes.ShowSettingsFrame = function()
 
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
     checkboxes.ShowMinimapButton:SetChecked(PorkNotes.GetSetting("ShowMinimapButton", true))
+    checkboxes.SyncAutoAccept:SetChecked(PorkNotes.GetSetting("SyncAutoAccept", false))
+    checkboxes.SyncAutoPopup:SetChecked(PorkNotes.GetSetting("SyncAutoPopup", false))
 
     UpdateDropdown()
+    UpdateHistoryDropdown()
 
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", UIParent)
+    local saved = PorkNotes.GetSetting("SettingsFramePos", nil)
+    if saved then
+        local _, _, point, relativePoint, x, y = string.find(saved, "([^,]+),([^,]+),(-?%d+),(-?%d+)")
+        if point then
+            frame:SetPoint(point, UIParent, relativePoint, tonumber(x), tonumber(y))
+        else
+            frame:SetPoint("CENTER", UIParent)
+        end
+    else
+        frame:SetPoint("CENTER", UIParent)
+    end
     frame:Show()
 end

@@ -2,10 +2,18 @@ local frame = CreateFrame("Frame", "PorkNotes_CreateNoteFrame", UIParent)
 local editingPlayerName = nil
 
 frame:SetWidth(300)
-frame:SetHeight(140)
+frame:SetHeight(175)
 frame:SetFrameStrata("DIALOG")
 frame:SetPoint("CENTER", UIParent, "CENTER")
+frame:SetMovable(true)
 frame:EnableMouse(true)
+frame:RegisterForDrag("LeftButton")
+frame:SetScript("OnDragStart", function() this:StartMoving() end)
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = frame:GetPoint()
+    PorkNotes.SetSetting("CreateNoteFramePos", point .. "," .. relativePoint .. "," .. math.floor(x) .. "," .. math.floor(y))
+end)
 frame:SetBackdrop({
     bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -23,10 +31,12 @@ frame:SetScript("OnHide", function()
     PlaySound("igMainMenuClose")
 end)
 
-local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-label:SetPoint("TOP", 0, -15)
-label:SetText("Creating new note")
+-- Title
+local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+title:SetPoint("TOP", 0, -15)
+title:SetText("|cFFD893EDPork|r|cFFFFBB00Notes|r - New Note")
 
+-- Player name label and editbox
 local playerLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 playerLabel:SetPoint("TOPLEFT", 22, -43)
 playerLabel:SetText("Character name:")
@@ -48,13 +58,43 @@ playerEditBox:SetBackdrop({
 })
 playerEditBox:SetBackdropColor(0, 0, 0, 0.5)
 
+-- Player name counter
+local playerCounter = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+playerCounter:SetPoint("TOPRIGHT", playerEditBox, "BOTTOMRIGHT", 0, -1)
+playerCounter:SetText("0 / 12")
+playerCounter:SetTextColor(0.6, 0.6, 0.6)
+
+playerEditBox:SetScript("OnTextChanged", function()
+    local text = playerEditBox:GetText()
+    -- Auto-capitalize and clean
+    if text and text ~= "" then
+        local firstLetter = string.sub(text, 1, 1)
+        local remainingLetters = string.sub(text, 2)
+        local capitalized = string.upper(firstLetter) .. string.lower(remainingLetters)
+        local cleaned = string.gsub(capitalized, "[^A-Za-z]", "")
+        if text ~= cleaned then
+            playerEditBox:SetText(cleaned)
+            return
+        end
+    end
+    -- Update counter
+    local current = string.len(playerEditBox:GetText())
+    playerCounter:SetText(current .. " / 12")
+    if current >= 10 then
+        playerCounter:SetTextColor(1, 0.3, 0.3)
+    else
+        playerCounter:SetTextColor(0.6, 0.6, 0.6)
+    end
+end)
+
+-- Note text editbox
 local textEditBox = CreateFrame("EditBox", nil, frame)
 textEditBox:SetWidth(260)
 textEditBox:SetHeight(30)
-textEditBox:SetPoint("TOP", 0, -65)
+textEditBox:SetPoint("TOP", 0, -82)
 textEditBox:SetAutoFocus(false)
 textEditBox:SetFontObject(GameFontNormal)
-textEditBox:SetMaxLetters(200)
+textEditBox:SetMaxLetters(150)
 textEditBox:SetTextInsets(5, 5, 3, 3)
 textEditBox:SetTextColor(1, 1, 1)
 textEditBox:SetBackdrop({
@@ -65,6 +105,23 @@ textEditBox:SetBackdrop({
 })
 textEditBox:SetBackdropColor(0, 0, 0, 0.5)
 
+-- Note text counter
+local textCounter = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+textCounter:SetPoint("TOPRIGHT", textEditBox, "BOTTOMRIGHT", 0, -1)
+textCounter:SetText("0 / 150")
+textCounter:SetTextColor(0.6, 0.6, 0.6)
+
+textEditBox:SetScript("OnTextChanged", function()
+    local current = string.len(textEditBox:GetText())
+    textCounter:SetText(current .. " / 150")
+    if current >= 130 then
+        textCounter:SetTextColor(1, 0.3, 0.3)
+    else
+        textCounter:SetTextColor(0.6, 0.6, 0.6)
+    end
+end)
+
+-- Buttons
 local submitButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 submitButton:SetWidth(100)
 submitButton:SetHeight(24)
@@ -104,18 +161,6 @@ playerEditBox:SetScript("OnEscapePressed", OnEscape)
 playerEditBox:SetScript("OnTabPressed", function()
     textEditBox:SetFocus()
 end)
-playerEditBox:SetScript("OnTextChanged", function()
-    local text = playerEditBox:GetText()
-    if text and text ~= "" then
-        local firstLetter = string.sub(text, 1, 1)
-        local remainingLetters = string.sub(text, 2)
-        local capitalized = string.upper(firstLetter) .. string.lower(remainingLetters)
-        local cleaned = string.gsub(capitalized, "[^A-Za-z]", "")
-        if text ~= cleaned then
-            playerEditBox:SetText(cleaned)
-        end
-    end
-end)
 
 textEditBox:SetScript("OnEnterPressed", OnSubmit)
 textEditBox:SetScript("OnEscapePressed", OnEscape)
@@ -139,5 +184,21 @@ submitButton:SetScript("OnClick", OnSubmit)
 PorkNotes.ShowCreateFrame = function()
     playerEditBox:SetText("")
     textEditBox:SetText("")
+    playerCounter:SetText("0 / 12")
+    playerCounter:SetTextColor(0.6, 0.6, 0.6)
+    textCounter:SetText("0 / 150")
+    textCounter:SetTextColor(0.6, 0.6, 0.6)
+    frame:ClearAllPoints()
+    local saved = PorkNotes.GetSetting("CreateNoteFramePos", nil)
+    if saved then
+        local _, _, point, relativePoint, x, y = string.find(saved, "([^,]+),([^,]+),(-?%d+),(-?%d+)")
+        if point then
+            frame:SetPoint(point, UIParent, relativePoint, tonumber(x), tonumber(y))
+        else
+            frame:SetPoint("CENTER", UIParent)
+        end
+    else
+        frame:SetPoint("CENTER", UIParent)
+    end
     frame:Show()
 end

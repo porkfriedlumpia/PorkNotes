@@ -1,9 +1,9 @@
--- PorkNotes v0.1.2
+-- PorkNotes v0.4.0
 -- by MrToffee and porkfriedlumpia
 
 PorkNotes = PorkNotes or {}
 
-local PORKNOTES_VERSION = "0.1.2"
+local PORKNOTES_VERSION = "0.4.0"
 local realm = GetRealmName()
 
 -- Debug toggle
@@ -36,11 +36,32 @@ PorkNotes.SetPlayerNote = function(playername, text)
 
     if text and text ~= "" then
         if not PorkNotes_Data[realm].notes[playername] then
+            -- New note — no history to record
             PorkNotes_Data[realm].notes[playername] = {
                 created = time(),
                 createdBy = UnitName("player"),
-                createdAtZone = GetRealZoneText()
+                createdAtZone = GetRealZoneText(),
+                history = {}
             }
+        else
+            -- Existing note — archive current text to history before overwriting
+            local existing = PorkNotes_Data[realm].notes[playername]
+            local limit = PorkNotes.GetSetting("HistoryLimit", -1)
+            if limit ~= 0 and existing.text and existing.text ~= "" then
+                existing.history = existing.history or {}
+                table.insert(existing.history, {
+                    text     = existing.text,
+                    authorBy = existing.updatedBy or existing.createdBy,
+                    authorAt = existing.updated or existing.created,
+                    source   = "edit"
+                })
+                -- Prune history if limit is set
+                if limit > 0 then
+                    while table.getn(existing.history) > limit do
+                        table.remove(existing.history, 1)
+                    end
+                end
+            end
         end
         PorkNotes_Data[realm].notes[playername].text = text
         PorkNotes_Data[realm].notes[playername].updated = time()
@@ -115,6 +136,14 @@ local function OnAddonLoaded()
         end
 
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r v" .. PORKNOTES_VERSION .. " loaded. Type |cffffcc00/pn|r to open.")
+
+        -- Restore any pending sync reviews from last session
+        local saved = PorkNotes.GetSetting("PendingSyncReviews", nil)
+        if saved and table.getn(saved) > 0 then
+            pendingSyncReviews = saved
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r You have |cffffcc00" .. table.getn(pendingSyncReviews) .. "|r pending sync review(s). Click a |cffffcc00[Review]|r link or use |cffffcc00/pn|r to review.")
+            TryShowSyncReview()
+        end
     end
 end
 
@@ -122,7 +151,11 @@ end
 local originalSetItemRef = SetItemRef
 function SetItemRef(link, text, button)
     if string.sub(link, 1, 10) == "porknotes:" then
-        PorkNotes.ShowEditFrame(string.sub(link, 11))
+        PorkNotes.ShowNoteDetailFrame(string.sub(link, 11))
+    elseif string.sub(link, 1, 17) == "porknotes_review:" then
+        if PorkNotes.ShowSyncReviewFrame then
+            PorkNotes.ShowSyncReviewFrame()
+        end
     else
         originalSetItemRef(link, text, button)
     end
@@ -184,7 +217,7 @@ hooksecurefunc("UnitPopup_OnClick", function()
         local menu = UIDROPDOWNMENU_INIT_MENU
         if type(menu) == "string" then menu = _G[menu] end
         local playername = menu and menu.name
-        if playername then PorkNotes.ShowEditFrame(playername) end
+        if playername then PorkNotes.ShowNoteDetailFrame(playername) end
     end
 end)
 
@@ -272,7 +305,7 @@ local function RegisterChatAlerts()
         local note = PorkNotes.GetPlayerNote(author)
         if not note then return end
 
-        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffffffff: " .. note.text .. "|r" .. BuildAlertMetadata(note)
+        local alertText = "|cff00ccff[PorkNotes]|r |Hporknotes:" .. author .. "|h|cffffcc00[" .. author .. "]|h|r|cffaaaaaa: " .. note.text .. "|r" .. BuildAlertMetadata(note)
 
         -- Route World and LookingForGroup channels to user-configured chat frame
         if event == "CHAT_MSG_CHANNEL" then
@@ -305,29 +338,280 @@ local function RegisterChatAlerts()
     end
 end
 
+-- Sync system
+local SYNC_PREFIX = "PORKNOTES"
+local SYNC_THROTTLE = 0.15
+local syncQueue = {}
+local syncTimer = 0
+local pendingSyncReviews = {}
+
+-- Encode/decode pipes for safe transmission
+local function EncodeNote(text)
+    if not text then return "" end
+    return string.gsub(text, "|", "PNPIPE")
+end
+
+local function DecodeNote(text)
+    if not text then return "" end
+    return string.gsub(text, "PNPIPE", "|")
+end
+
+-- Build a sync message for a single note
+local function BuildSyncMessage(playername, note)
+    return "SYNC\t" .. playername
+        .. "\t" .. EncodeNote(note.text or "")
+        .. "\t" .. (note.createdBy or "")
+        .. "\t" .. tostring(note.created or 0)
+        .. "\t" .. EncodeNote(note.createdAtZone or "")
+        .. "\t" .. (note.updatedBy or "")
+        .. "\t" .. tostring(note.updated or 0)
+end
+
+-- Queue a note for sending
+local function QueueSyncMessage(msg, channel)
+    table.insert(syncQueue, { msg = msg, channel = channel })
+end
+
+-- Process sync queue with throttle via OnUpdate
+local syncFrame = CreateFrame("Frame")
+syncFrame:SetScript("OnUpdate", function()
+    if table.getn(syncQueue) == 0 then return end
+    syncTimer = syncTimer + arg1
+    if syncTimer < SYNC_THROTTLE then return end
+    syncTimer = 0
+    local item = syncQueue[1]
+    table.remove(syncQueue, 1)
+    SendAddonMessage(SYNC_PREFIX, item.msg, item.channel)
+end)
+
+-- Save pending reviews to settings so they survive reloads
+local function SavePendingReviews()
+    PorkNotes.SetSetting("PendingSyncReviews", pendingSyncReviews)
+end
+
+-- Handle an incoming sync message
+-- Try to show sync review frame — respects setting and combat state
+local function TryShowSyncReview()
+    if not PorkNotes.GetSetting("SyncAutoPopup", false) then return end
+    if UnitAffectingCombat("player") then return end
+    if table.getn(pendingSyncReviews) == 0 then return end
+    if PorkNotes.ShowSyncReviewFrame then
+        PorkNotes.ShowSyncReviewFrame()
+    end
+end
+
+local function HandleIncomingSync(msg, sender)
+    local _, _, playername, encodedText, createdBy, createdAtStr, encodedZone, updatedBy, updatedAtStr
+        = string.find(msg, "([^\t]+)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)")
+
+    if not playername then return end
+
+    local noteText    = DecodeNote(encodedText)
+    local createdAt   = tonumber(createdAtStr) or 0
+    local createdZone = DecodeNote(encodedZone)
+    local updatedAt   = tonumber(updatedAtStr) or 0
+
+    local incomingNote = {
+        text          = noteText,
+        createdBy     = createdBy,
+        created       = createdAt,
+        createdAtZone = createdZone,
+        updatedBy     = updatedBy,
+        updated       = updatedAt,
+        history       = {}
+    }
+
+    local existing     = PorkNotes.GetPlayerNote(playername)
+    local localTime    = existing and (existing.updated or existing.created or 0) or 0
+    local incomingTime = updatedAt or createdAt or 0
+    local autoAccept   = PorkNotes.GetSetting("SyncAutoAccept", false)
+
+    -- Case: timestamps identical — always silently ignore, nothing to review
+    if existing and incomingTime == localTime then return end
+
+    -- If auto-accept is off, queue everything for manual review
+    if not autoAccept then
+        table.insert(pendingSyncReviews, {
+            playername   = playername,
+            senderName   = sender,
+            incomingNote = incomingNote,
+            localNote    = existing
+        })
+        SavePendingReviews()
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Note for |cffffcc00" .. playername .. "|r received from " .. sender .. ". |Hporknotes_review:" .. playername .. "|h|cffffcc00[Review]|h|r")
+        TryShowSyncReview()
+        return
+    end
+
+    -- Auto-accept mode: apply logic based on timestamp
+    -- Case 1: no local note — apply immediately with sync history entry
+    if not existing then
+        incomingNote.history = incomingNote.history or {}
+        table.insert(incomingNote.history, {
+            text     = incomingNote.text,
+            authorBy = incomingNote.updatedBy or incomingNote.createdBy,
+            authorAt = incomingNote.updated or incomingNote.created,
+            editedBy = sender,
+            source   = "sync"
+        })
+        PorkNotes_Data[realm].notes[playername] = incomingNote
+        PorkNotes.UpdateNotesFrame()
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Note for |cffffcc00" .. playername .. "|r received from " .. sender .. " and saved.")
+        return
+    end
+
+    -- Case 2: incoming is newer — apply immediately
+    if incomingTime > localTime then
+        existing.history = existing.history or {}
+        if existing.text and existing.text ~= "" then
+            table.insert(existing.history, {
+                text     = existing.text,
+                authorBy = existing.updatedBy or existing.createdBy,
+                authorAt = existing.updated or existing.created,
+                editedBy = sender,
+                source   = "sync"
+            })
+        end
+        existing.text          = noteText
+        existing.updatedBy     = updatedBy
+        existing.updated       = updatedAt
+        existing.updatedAtZone = createdZone
+        PorkNotes.UpdateNotesFrame()
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Note for |cffffcc00" .. playername .. "|r updated from " .. sender .. " (newer version).")
+        return
+    end
+
+    -- Case 3: incoming is older — queue for review even in auto-accept mode
+    table.insert(pendingSyncReviews, {
+        playername   = playername,
+        senderName   = sender,
+        incomingNote = incomingNote,
+        localNote    = existing
+    })
+    SavePendingReviews()
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r " .. sender .. " sent an older note for |cffffcc00" .. playername .. "|r. |Hporknotes_review:" .. playername .. "|h|cffffcc00[Review]|h|r")
+    TryShowSyncReview()
+end
+
+-- Register CHAT_MSG_ADDON listener
+local function RegisterSyncListener()
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("CHAT_MSG_ADDON")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function()
+        if event == "PLAYER_REGEN_ENABLED" then
+            -- Left combat — show review frame if setting is on and reviews pending
+            TryShowSyncReview()
+            return
+        end
+        if arg1 ~= SYNC_PREFIX then return end
+        local msg    = arg2
+        local sender = arg4
+        if not msg or not sender then return end
+        local _, _, msgType = string.find(msg, "^([^\t]+)")
+        if msgType == "SYNC" then
+            local rest = string.sub(msg, 6)
+            HandleIncomingSync(rest, sender)
+        end
+    end)
+end
+
+-- Public sync API
+PorkNotes.SyncNote = function(playername, channel)
+    local note = PorkNotes.GetPlayerNote(playername)
+    if not note then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r No note found for " .. playername .. ".")
+        return
+    end
+    local msg = BuildSyncMessage(playername, note)
+    QueueSyncMessage(msg, channel)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Sharing note for |cffffcc00" .. playername .. "|r to " .. channel .. ".")
+end
+
+PorkNotes.SyncAll = function(channel)
+    local notes = PorkNotes.GetAllNotes()
+    if not notes then return end
+    local count = 0
+    for playername, note in pairs(notes) do
+        local msg = BuildSyncMessage(playername, note)
+        QueueSyncMessage(msg, channel)
+        count = count + 1
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Queued " .. count .. " notes to sync to " .. channel .. ".")
+end
+
+
+
+PorkNotes.GetPendingSyncReviews = function()
+    return pendingSyncReviews
+end
+
+PorkNotes.ResolveSyncReview = function(index, keepIncoming)
+    local review = pendingSyncReviews[index]
+    if not review then return end
+    if keepIncoming then
+        local existing = PorkNotes.GetPlayerNote(review.playername)
+        local incoming = review.incomingNote
+        if existing then
+            -- Archive existing note to history before overwriting
+            existing.history = existing.history or {}
+            if existing.text and existing.text ~= "" then
+                table.insert(existing.history, {
+                    text     = existing.text,
+                    authorBy = existing.updatedBy or existing.createdBy,
+                    authorAt = existing.updated or existing.created,
+                    editedBy = review.senderName or "unknown",
+                    source   = "sync"
+                })
+            end
+            existing.text          = incoming.text
+            existing.updatedBy     = incoming.updatedBy or incoming.createdBy
+            existing.updated       = incoming.updated or incoming.created
+            existing.updatedAtZone = incoming.createdAtZone
+        else
+            -- Brand new note — add a history entry recording the sync receipt
+            incoming.history = incoming.history or {}
+            table.insert(incoming.history, {
+                text     = incoming.text,
+                authorBy = incoming.updatedBy or incoming.createdBy,
+                authorAt = incoming.updated or incoming.created,
+                editedBy = review.senderName or "unknown",
+                source   = "sync"
+            })
+            PorkNotes_Data[realm].notes[review.playername] = incoming
+        end
+        PorkNotes.UpdateNotesFrame()
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Accepted incoming note for |cffffcc00" .. review.playername .. "|r from " .. (review.senderName or "unknown") .. ".")
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Kept local note for |cffffcc00" .. review.playername .. "|r.")
+    end
+    table.remove(pendingSyncReviews, index)
+    SavePendingReviews()
+end
+
 -- Minimap button
 local function RegisterMinimapButton()
     local minimapButton = CreateFrame("Button", "PorkNotes_MinimapButton", Minimap)
-    minimapButton:SetWidth(24)
-    minimapButton:SetHeight(24)
+    minimapButton:SetWidth(30)
+    minimapButton:SetHeight(30)
     minimapButton:SetFrameStrata("MEDIUM")
     minimapButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 20, -20)
     minimapButton:SetNormalTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetPushedTexture("Interface\\AddOns\\PorkNotes\\Textures\\porknotes")
     minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
- 
+
     local border = minimapButton:CreateTexture(nil, "OVERLAY")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     border:SetWidth(50)
     border:SetHeight(50)
     border:SetPoint("CENTER", minimapButton, "CENTER", 10, -10)
- 
+
     if PorkNotes.GetSetting("ShowMinimapButton", true) then
         minimapButton:Show()
     else
         minimapButton:Hide()
     end
- 
+
     minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     minimapButton:SetScript("OnClick", function()
         if arg1 == "LeftButton" then
@@ -336,7 +620,7 @@ local function RegisterMinimapButton()
             PorkNotes.ShowSettingsFrame()
         end
     end)
- 
+
     minimapButton:SetScript("OnEnter", function()
         GameTooltip:SetOwner(minimapButton, "ANCHOR_LEFT")
         GameTooltip:SetText("PorkNotes")
@@ -344,11 +628,11 @@ local function RegisterMinimapButton()
         GameTooltip:AddLine("Right click: Settings", 1, 1, 1)
         GameTooltip:Show()
     end)
- 
+
     minimapButton:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
- 
+
     PorkNotes.SetMinimapButtonVisible = function(visible)
         if visible then
             minimapButton:Show()
@@ -364,4 +648,5 @@ RegisterEvent("UPDATE_MOUSEOVER_UNIT", OnUpdateMouseoverUnit)
 RegisterChatAlerts()
 RegisterCommands()
 RegisterUnitPopupMenus()
+RegisterSyncListener()
 RegisterMinimapButton()
