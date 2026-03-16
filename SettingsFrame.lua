@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(460)
+frame:SetHeight(490)  -- Increased from 460 to 490 for sync toggle
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -120,6 +120,8 @@ CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y)
 
 CreateCheckbox("ShowMinimapButton", "Show minimap button", 20, y); y = y + 35
 
+CreateCheckbox("SyncEnabled", "Receive synced notes from other players", 20, y); y = y + 35
+
 CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 25
 CreateCheckbox("SyncAutoPopup", "Auto-open review window on sync receive (out of combat only)", 20, y); y = y + 35
 
@@ -209,6 +211,7 @@ PorkNotes.ShowSettingsFrame = function()
 
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
     checkboxes.ShowMinimapButton:SetChecked(PorkNotes.GetSetting("ShowMinimapButton", true))
+    checkboxes.SyncEnabled:SetChecked(PorkNotes.GetSetting("SyncEnabled", true))
     checkboxes.SyncAutoAccept:SetChecked(PorkNotes.GetSetting("SyncAutoAccept", false))
     checkboxes.SyncAutoPopup:SetChecked(PorkNotes.GetSetting("SyncAutoPopup", false))
 

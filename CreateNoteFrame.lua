@@ -64,6 +64,14 @@ playerCounter:SetPoint("TOPRIGHT", playerEditBox, "BOTTOMRIGHT", 0, -1)
 playerCounter:SetText("0 / 12")
 playerCounter:SetTextColor(0.6, 0.6, 0.6)
 
+-- Duplicate warning label (shown when player name matches existing note)
+local duplicateWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+duplicateWarning:SetPoint("TOPRIGHT", playerCounter, "BOTTOMRIGHT", 0, -4)
+duplicateWarning:SetTextColor(1, 0.6, 0)
+duplicateWarning:SetText("|cffff9900⚠ Note already exists for this player|r")
+duplicateWarning:Hide()
+
+
 playerEditBox:SetScript("OnTextChanged", function()
     local text = playerEditBox:GetText()
     -- Auto-capitalize and clean
@@ -77,13 +85,28 @@ playerEditBox:SetScript("OnTextChanged", function()
             return
         end
     end
-    -- Update counter
+    -- Update counter and check for duplicate
     local current = string.len(playerEditBox:GetText())
     playerCounter:SetText(current .. " / 12")
     if current >= 10 then
         playerCounter:SetTextColor(1, 0.3, 0.3)
     else
         playerCounter:SetTextColor(0.6, 0.6, 0.6)
+    end
+    
+    -- Check if note already exists for this player
+    if current > 0 then
+        local existingNote = PorkNotes.GetPlayerNote(text)
+        if existingNote then
+            duplicateWarning:Show()
+            playerEditBox:SetBackdropColor(0.3, 0.3, 0)  -- Dark yellow tint
+        else
+            duplicateWarning:Hide()
+            playerEditBox:SetBackdropColor(0, 0, 0, 0.5)  -- Normal color
+        end
+    else
+        duplicateWarning:Hide()
+        playerEditBox:SetBackdropColor(0, 0, 0, 0.5)
     end
 end)
 
@@ -139,12 +162,42 @@ end)
 
 local function OnSubmit()
     local playerName = playerEditBox:GetText()
-    if playerName and playerName ~= "" then
-        local text = textEditBox:GetText()
+    if not playerName or playerName == "" then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Please enter a character name.")
+        return
+    end
+    
+    local text = textEditBox:GetText()
+    local existingNote = PorkNotes.GetPlayerNote(playerName)
+    
+    -- If note exists, show confirmation dialog
+    if existingNote then
+        local existingText = existingNote.text or "(empty)"
+        local dialogText = "Update |cffffcc00" .. playerName .. "|r's note?\n\nCurrent note: |cffffff00" .. existingText .. "|r"
+        
+        StaticPopupDialogs["PORKNOTES_CONFIRM_OVERWRITE"] = {
+            text = dialogText,
+            button1 = "Update",
+            button2 = "Cancel",
+            OnAccept = function()
+                PorkNotes.SetPlayerNote(playerName, text)
+                PorkNotes.UpdateNotesFrame()
+                frame:Hide()
+            end,
+            OnCancel = function()
+                -- Stay in frame
+            end,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+        }
+        StaticPopup_Show("PORKNOTES_CONFIRM_OVERWRITE")
+    else
+        -- New note, create directly
         PorkNotes.SetPlayerNote(playerName, text)
         PorkNotes.UpdateNotesFrame()
+        frame:Hide()
     end
-    frame:Hide()
 end
 
 local function OnEscape()
@@ -182,10 +235,19 @@ end)
 submitButton:SetScript("OnClick", OnSubmit)
 
 PorkNotes.ShowCreateFrame = function()
-    playerEditBox:SetText("")
+    -- Auto-fill player name if a player is currently targeted
+    local targetName = UnitName("target")
+    if targetName and UnitIsPlayer("target") then
+        playerEditBox:SetText(targetName)
+    else
+        playerEditBox:SetText("")
+    end
+    
     textEditBox:SetText("")
     playerCounter:SetText("0 / 12")
     playerCounter:SetTextColor(0.6, 0.6, 0.6)
+    duplicateWarning:Hide()
+    playerEditBox:SetBackdropColor(0, 0, 0, 0.5)
     textCounter:SetText("0 / 150")
     textCounter:SetTextColor(0.6, 0.6, 0.6)
     frame:ClearAllPoints()

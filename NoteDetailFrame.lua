@@ -376,10 +376,38 @@ local function HasUnsavedChanges()
     return editBox:GetText() ~= savedText
 end
 
+local function SetEmptyState()
+    -- Display empty state when there's no note for this player
+    isEditMode = false
+    noteLabel:SetText("|cffaaaaaa(No note yet for " .. currentPlayerName .. "). Click Edit to create one.|r")
+    noteLabel:Show()
+    editBox:Hide()
+    charCounter:Hide()
+    editButton:Show()
+    deleteButton:Hide()
+    shareButton:Hide()
+    saveButton:Hide()
+    cancelEditButton:Hide()
+    confirmDeleteButton:Hide()
+    cancelDeleteButton:Hide()
+    deletePromptLabel:Hide()
+    confirmDiscardButton:Hide()
+    cancelDiscardButton:Hide()
+    discardPromptLabel:Hide()
+    closeBtn:Show()
+end
+
 local function SetViewMode()
     isEditMode = false
     local note = PorkNotes.GetPlayerNote(currentPlayerName)
-    noteLabel:SetText(note and note.text or "")
+    
+    -- Check if note is empty and show empty state
+    if not note or not note.text or note.text == "" then
+        SetEmptyState()
+        return
+    end
+    
+    noteLabel:SetText(note.text)
     noteLabel:Show()
     editBox:Hide()
     charCounter:Hide()
