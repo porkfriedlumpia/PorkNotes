@@ -28,11 +28,6 @@ frame:SetScript("OnShow", function()
     PlaySound("igMainMenuOpen")
 end)
 
-frame:SetScript("OnHide", function()
-    PlaySound("igMainMenuClose")
-end)
-
--- Makes the window closable by pressing Escape
 tinsert(UISpecialFrames, frame:GetName())
 
 local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -56,7 +51,7 @@ editBox:SetWidth(300)
 editBox:SetHeight(30)
 editBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -36)
 editBox:SetFontObject(GameFontNormal)
-editBox:SetMaxLetters(200)
+editBox:SetMaxLetters(150)
 editBox:SetTextInsets(5, 5, 3, 3)
 editBox:SetTextColor(1, 1, 1)
 editBox:SetBackdrop({
@@ -76,8 +71,8 @@ charCounter:Hide()
 
 editBox:SetScript("OnTextChanged", function()
     local current = string.len(editBox:GetText())
-    charCounter:SetText(current .. " / 200")
-    if current >= 180 then
+    charCounter:SetText(current .. " / 150")
+    if current >= 130 then
         charCounter:SetTextColor(1, 0.3, 0.3)
     else
         charCounter:SetTextColor(0.6, 0.6, 0.6)
@@ -125,7 +120,7 @@ historyToggle:SetHeight(20)
 historyToggle:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -175)
 historyToggle:SetText("Show history ▼")
 
--- History scroll container (shown when expanded)
+-- History scroll container
 local historyContainer = CreateFrame("Frame", nil, frame)
 historyContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -202)
 historyContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -202)
@@ -147,19 +142,36 @@ local historyContent = CreateFrame("Frame", nil, historyScroll)
 historyContent:SetWidth(1)
 historyScroll:SetScrollChild(historyContent)
 
--- Bottom buttons
+-- Bottom buttons — view mode
 local editButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-editButton:SetWidth(80)
+editButton:SetWidth(70)
 editButton:SetHeight(24)
 editButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 15)
 editButton:SetText("Edit")
 
 local deleteButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-deleteButton:SetWidth(80)
+deleteButton:SetWidth(70)
 deleteButton:SetHeight(24)
-deleteButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 110, 15)
+deleteButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 98, 15)
 deleteButton:SetText("Delete")
 
+-- State - declared early so share menu closures can read it
+local currentPlayerName = nil
+
+-- Share dropdown button
+local shareButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+shareButton:SetWidth(70)
+shareButton:SetHeight(24)
+shareButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 176, 15)
+shareButton:SetText("Share ▼")
+
+local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+closeBtn:SetWidth(70)
+closeBtn:SetHeight(24)
+closeBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 15)
+closeBtn:SetText("Close")
+
+-- Bottom buttons — edit mode
 local saveButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 saveButton:SetWidth(80)
 saveButton:SetHeight(24)
@@ -174,6 +186,7 @@ cancelEditButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 110, 15)
 cancelEditButton:SetText("Cancel")
 cancelEditButton:Hide()
 
+-- Bottom buttons — delete confirm mode
 local confirmDeleteButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 confirmDeleteButton:SetWidth(100)
 confirmDeleteButton:SetHeight(24)
@@ -194,25 +207,73 @@ deletePromptLabel:SetTextColor(1, 0.3, 0.3)
 deletePromptLabel:SetText("Delete this note?")
 deletePromptLabel:Hide()
 
-local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-closeBtn:SetWidth(80)
-closeBtn:SetHeight(24)
-closeBtn:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 15)
-closeBtn:SetText("Close")
+-- Bottom buttons — discard confirm mode
+local confirmDiscardButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+confirmDiscardButton:SetWidth(100)
+confirmDiscardButton:SetHeight(24)
+confirmDiscardButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 15)
+confirmDiscardButton:SetText("Discard")
+confirmDiscardButton:Hide()
+
+local cancelDiscardButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+cancelDiscardButton:SetWidth(80)
+cancelDiscardButton:SetHeight(24)
+cancelDiscardButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 130, 15)
+cancelDiscardButton:SetText("Keep editing")
+cancelDiscardButton:Hide()
+
+local discardPromptLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+discardPromptLabel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 22)
+discardPromptLabel:SetTextColor(1, 0.6, 0.2)
+discardPromptLabel:SetText("Discard changes?")
+discardPromptLabel:Hide()
+
+-- Share dropdown
+local shareDropdown = CreateFrame("Frame", "PorkNotes_NoteDetailShareDropdown", UIParent, "UIDropDownMenuTemplate")
+
+local function OpenShareDropdown()
+    if not currentPlayerName then return end
+    UIDropDownMenu_Initialize(shareDropdown, function()
+        local options = {
+            { text = "Party",        channel = "PARTY"        },
+            { text = "Raid",         channel = "RAID"         },
+            { text = "Guild",        channel = "GUILD"        },
+            { text = "Battleground", channel = "BATTLEGROUND" },
+        }
+        for _, opt in ipairs(options) do
+            local info = {}
+            info.text = opt.text
+            info.notCheckable = 1
+            local ch = opt.channel
+            local name = currentPlayerName
+            info.func = function()
+                CloseDropDownMenus()
+                PorkNotes.SyncNote(name, ch)
+            end
+            UIDropDownMenu_AddButton(info)
+        end
+    end, "MENU")
+    ToggleDropDownMenu(1, nil, shareDropdown, "cursor", 0, 0)
+end
+
+shareButton:SetScript("OnClick", function()
+    OpenShareDropdown()
+end)
+
+shareButton:SetScript("OnClick", function()
+    OpenShareDropdown()
+end)
 
 -- State
-local currentPlayerName = nil
 local isEditMode = false
 local isHistoryExpanded = false
 local historyLines = {}
 
--- Format timestamp
 local function FormatDate(timestamp)
     if not timestamp then return "unknown" end
     return date("%Y-%m-%d", timestamp)
 end
 
--- Populate metadata
 local function RefreshMetadata()
     local note = PorkNotes.GetPlayerNote(currentPlayerName)
     if not note then return end
@@ -228,9 +289,7 @@ local function RefreshMetadata()
     end
 end
 
--- Build history scroll content
 local function RefreshHistory()
-    -- Hide existing lines
     for _, line in ipairs(historyLines) do
         line:Hide()
     end
@@ -248,7 +307,6 @@ local function RefreshHistory()
         return
     end
 
-    -- Show newest first
     local totalHeight = 0
     local count = table.getn(note.history)
     for i = count, 1, -1 do
@@ -259,8 +317,13 @@ local function RefreshHistory()
         dateLine:SetPoint("TOPLEFT", 4, yPos)
         dateLine:SetWidth(300)
         dateLine:SetJustifyH("LEFT")
-        dateLine:SetTextColor(0.7, 0.7, 1)
-        dateLine:SetText("Edited by " .. (entry.editedBy or "unknown") .. " — " .. FormatDate(entry.editedAt))
+        if entry.source == "sync" then
+            dateLine:SetTextColor(0.4, 0.8, 1)
+            dateLine:SetText("Synced from " .. (entry.editedBy or "unknown") .. " — " .. FormatDate(entry.authorAt or entry.editedAt))
+        else
+            dateLine:SetTextColor(0.7, 0.7, 1)
+            dateLine:SetText("Written by " .. (entry.authorBy or entry.editedBy or "unknown") .. " — " .. FormatDate(entry.authorAt or entry.editedAt))
+        end
         table.insert(historyLines, dateLine)
         totalHeight = totalHeight + 14
 
@@ -273,7 +336,6 @@ local function RefreshHistory()
         table.insert(historyLines, textLine)
         totalHeight = totalHeight + 18
 
-        -- Separator between entries
         if i > 1 then
             local sep = historyContent:CreateTexture(nil, "BACKGROUND")
             sep:SetHeight(1)
@@ -289,7 +351,6 @@ local function RefreshHistory()
     historyScroll:UpdateScrollChildRect()
 end
 
--- Collapse history
 local function CollapseHistory()
     isHistoryExpanded = false
     historyContainer:Hide()
@@ -297,7 +358,6 @@ local function CollapseHistory()
     historyToggle:SetText("Show history ▼")
 end
 
--- Expand history
 local function ExpandHistory()
     isHistoryExpanded = true
     RefreshHistory()
@@ -307,14 +367,15 @@ local function ExpandHistory()
 end
 
 historyToggle:SetScript("OnClick", function()
-    if isHistoryExpanded then
-        CollapseHistory()
-    else
-        ExpandHistory()
-    end
+    if isHistoryExpanded then CollapseHistory() else ExpandHistory() end
 end)
 
--- View mode
+local function HasUnsavedChanges()
+    local note = PorkNotes.GetPlayerNote(currentPlayerName)
+    local savedText = note and note.text or ""
+    return editBox:GetText() ~= savedText
+end
+
 local function SetViewMode()
     isEditMode = false
     local note = PorkNotes.GetPlayerNote(currentPlayerName)
@@ -324,67 +385,92 @@ local function SetViewMode()
     charCounter:Hide()
     editButton:Show()
     deleteButton:Show()
+    shareButton:Show()
     saveButton:Hide()
     cancelEditButton:Hide()
     confirmDeleteButton:Hide()
     cancelDeleteButton:Hide()
     deletePromptLabel:Hide()
+    confirmDiscardButton:Hide()
+    cancelDiscardButton:Hide()
+    discardPromptLabel:Hide()
     closeBtn:Show()
 end
 
--- Edit mode
 local function SetEditMode()
     isEditMode = true
     local note = PorkNotes.GetPlayerNote(currentPlayerName)
     editBox:SetText(note and note.text or "")
     editBox:SetFocus()
     local current = string.len(editBox:GetText())
-    charCounter:SetText(current .. " / 200")
+    charCounter:SetText(current .. " / 150")
     noteLabel:Hide()
     editBox:Show()
     charCounter:Show()
     editButton:Hide()
     deleteButton:Hide()
+    shareButton:Hide()
     saveButton:Show()
     cancelEditButton:Show()
     confirmDeleteButton:Hide()
     cancelDeleteButton:Hide()
     deletePromptLabel:Hide()
+    confirmDiscardButton:Hide()
+    cancelDiscardButton:Hide()
+    discardPromptLabel:Hide()
     closeBtn:Hide()
 end
 
--- Delete confirm mode
 local function SetDeleteConfirmMode()
     editButton:Hide()
     deleteButton:Hide()
+    shareButton:Hide()
     saveButton:Hide()
     cancelEditButton:Hide()
     confirmDeleteButton:Show()
     cancelDeleteButton:Show()
     deletePromptLabel:Show()
+    confirmDiscardButton:Hide()
+    cancelDiscardButton:Hide()
+    discardPromptLabel:Hide()
     closeBtn:Hide()
 end
 
--- Button handlers
+local function SetDiscardConfirmMode()
+    editButton:Hide()
+    deleteButton:Hide()
+    shareButton:Hide()
+    saveButton:Hide()
+    cancelEditButton:Hide()
+    confirmDeleteButton:Hide()
+    cancelDeleteButton:Hide()
+    deletePromptLabel:Hide()
+    confirmDiscardButton:Show()
+    cancelDiscardButton:Show()
+    discardPromptLabel:Show()
+    closeBtn:Hide()
+end
+
+local function SaveAndReturn()
+    PorkNotes.SetPlayerNote(currentPlayerName, editBox:GetText())
+    PorkNotes.UpdateNotesFrame()
+    SetViewMode()
+    RefreshMetadata()
+    if isHistoryExpanded then RefreshHistory() end
+end
+
 editButton:SetScript("OnClick", SetEditMode)
-cancelEditButton:SetScript("OnClick", SetViewMode)
-editBox:SetScript("OnEscapePressed", SetViewMode)
 
-saveButton:SetScript("OnClick", function()
-    PorkNotes.SetPlayerNote(currentPlayerName, editBox:GetText())
-    PorkNotes.UpdateNotesFrame()
-    SetViewMode()
-    RefreshMetadata()
-    if isHistoryExpanded then RefreshHistory() end
+cancelEditButton:SetScript("OnClick", function()
+    if HasUnsavedChanges() then SetDiscardConfirmMode() else SetViewMode() end
 end)
 
-editBox:SetScript("OnEnterPressed", function()
-    PorkNotes.SetPlayerNote(currentPlayerName, editBox:GetText())
-    PorkNotes.UpdateNotesFrame()
-    SetViewMode()
-    RefreshMetadata()
-    if isHistoryExpanded then RefreshHistory() end
+editBox:SetScript("OnEscapePressed", function()
+    if HasUnsavedChanges() then SetDiscardConfirmMode() else SetViewMode() end
 end)
+
+saveButton:SetScript("OnClick", SaveAndReturn)
+editBox:SetScript("OnEnterPressed", SaveAndReturn)
 
 deleteButton:SetScript("OnClick", SetDeleteConfirmMode)
 cancelDeleteButton:SetScript("OnClick", SetViewMode)
@@ -395,8 +481,26 @@ confirmDeleteButton:SetScript("OnClick", function()
     frame:Hide()
 end)
 
+confirmDiscardButton:SetScript("OnClick", SetViewMode)
+cancelDiscardButton:SetScript("OnClick", function()
+    SetEditMode()
+end)
+
 closeBtn:SetScript("OnClick", function()
     frame:Hide()
+end)
+
+closeButton:SetScript("OnClick", function()
+    if isEditMode and HasUnsavedChanges() then
+        SetDiscardConfirmMode()
+    else
+        frame:Hide()
+    end
+end)
+
+frame:SetScript("OnHide", function()
+    PlaySound("igMainMenuClose")
+    CloseDropDownMenus()
 end)
 
 -- Public API
