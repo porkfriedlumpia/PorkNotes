@@ -1,13 +1,19 @@
--- PorkNotes v0.4.0
+-- PorkNotes v0.4.1
 -- by MrToffee and porkfriedlumpia
 
 PorkNotes = PorkNotes or {}
 
-local PORKNOTES_VERSION = "0.4.0"
+local PORKNOTES_VERSION = "0.4.1"
 local realm = GetRealmName()
 
 -- Debug toggle
 PorkNotes.ChatDebug = false
+
+-- Sync throttle: tracks last sync timestamp from each player
+-- Format: { [playerName] = lastSyncTimestamp }
+-- Used to prevent spam cycles from rapid repeated syncs
+local syncThrottle = {}
+local SYNC_THROTTLE_WINDOW = 300  -- 5 minutes in seconds
 
 -- Event registration helper
 local function RegisterEvent(event, func)
@@ -83,6 +89,91 @@ PorkNotes.SetSetting = function(setting, value)
     PorkNotes_Settings[setting] = value
 end
 
+-- PHASE 2: Validate incoming sync message fields
+local function ValidateSyncMessage(playername, noteText, createdBy, createdAt, createdZone, updatedBy, updatedAt)
+    -- Validate playername: 1-12 characters, alphanumeric only
+    if not playername or string.len(playername) < 1 or string.len(playername) > 12 then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid playername length: " .. tostring(playername))
+        end
+        return false
+    end
+    if not string.match(playername, "^[A-Za-z]+$") then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid playername format (non-alphanumeric): " .. tostring(playername))
+        end
+        return false
+    end
+
+    -- Validate note text: ≤150 characters
+    if noteText and string.len(noteText) > 150 then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Note text exceeds 150 chars: " .. string.len(noteText))
+        end
+        return false
+    end
+
+    -- Validate timestamps: must be integers, reasonable range (past 10 years, not future)
+    local now = time()
+    local tenYearsAgo = now - (365 * 24 * 60 * 60 * 10)
+    if createdAt and (createdAt < tenYearsAgo or createdAt > now) then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid createdAt timestamp: " .. tostring(createdAt))
+        end
+        return false
+    end
+    if updatedAt and (updatedAt < tenYearsAgo or updatedAt > now) then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid updatedAt timestamp: " .. tostring(updatedAt))
+        end
+        return false
+    end
+
+    -- Validate creator/updater names: alphanumeric format
+    if createdBy and not string.match(createdBy, "^[A-Za-z]*$") then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid createdBy format: " .. tostring(createdBy))
+        end
+        return false
+    end
+    if updatedBy and not string.match(updatedBy, "^[A-Za-z]*$") then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Invalid updatedBy format: " .. tostring(updatedBy))
+        end
+        return false
+    end
+
+    return true
+end
+
+-- PHASE 3: Throttle management
+local function CheckAndUpdateThrottle(playerName)
+    local now = time()
+    local lastSync = syncThrottle[playerName]
+    
+    -- Record this sync
+    syncThrottle[playerName] = now
+    
+    -- Return true if this is a throttled sync (within window of last sync)
+    if lastSync and (now - lastSync) < SYNC_THROTTLE_WINDOW then
+        return true
+    end
+    return false
+end
+
+-- Restore throttle table from settings on load
+local function RestoreThrottleTable()
+    local saved = PorkNotes.GetSetting("SyncThrottle", nil)
+    if saved then
+        syncThrottle = saved
+    end
+end
+
+-- Persist throttle table to settings
+local function SaveThrottleTable()
+    PorkNotes.SetSetting("SyncThrottle", syncThrottle)
+end
+
 -- CaramelNotes import
 PorkNotes.ImportFromCaramelNotes = function()
     if not CaramelNotes_Data then
@@ -129,6 +220,9 @@ local function OnAddonLoaded()
         PorkNotes_Data[realm] = PorkNotes_Data[realm] or {}
         PorkNotes_Data[realm].notes = PorkNotes_Data[realm].notes or {}
         PorkNotes_Settings = PorkNotes_Settings or {}
+
+        -- Restore throttle table from settings
+        RestoreThrottleTable()
 
         -- Prompt for CaramelNotes import if data exists and PorkNotes has no notes yet
         if CaramelNotes_Data and not HasAnyNotes() then
@@ -401,6 +495,14 @@ local function TryShowSyncReview()
 end
 
 local function HandleIncomingSync(msg, sender)
+    -- PHASE 1: Check if sync receiving is enabled
+    if not PorkNotes.GetSetting("SyncEnabled", true) then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Sync disabled by user. Ignoring sync from " .. sender)
+        end
+        return
+    end
+
     local _, _, playername, encodedText, createdBy, createdAtStr, encodedZone, updatedBy, updatedAtStr
         = string.find(msg, "([^\t]+)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)")
 
@@ -410,6 +512,14 @@ local function HandleIncomingSync(msg, sender)
     local createdAt   = tonumber(createdAtStr) or 0
     local createdZone = DecodeNote(encodedZone)
     local updatedAt   = tonumber(updatedAtStr) or 0
+
+    -- PHASE 2: Validate all fields
+    if not ValidateSyncMessage(playername, noteText, createdBy, createdAt, createdZone, updatedBy, updatedAt) then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Rejected malformed sync from " .. sender .. " for player " .. playername)
+        end
+        return
+    end
 
     local incomingNote = {
         text          = noteText,
@@ -426,20 +536,33 @@ local function HandleIncomingSync(msg, sender)
     local incomingTime = updatedAt or createdAt or 0
     local autoAccept   = PorkNotes.GetSetting("SyncAutoAccept", false)
 
+    -- PHASE 3: Apply throttle and log if applicable
+    local isThrottled = CheckAndUpdateThrottle(sender)
+    SaveThrottleTable()
+
     -- Case: timestamps identical — always silently ignore, nothing to review
     if existing and incomingTime == localTime then return end
 
-    -- If auto-accept is off, queue everything for manual review
+    -- If auto-accept is off, queue everything for manual review (throttled or not)
     if not autoAccept then
         table.insert(pendingSyncReviews, {
             playername   = playername,
             senderName   = sender,
             incomingNote = incomingNote,
-            localNote    = existing
+            localNote    = existing,
+            throttled    = isThrottled  -- Track throttle state in review
         })
         SavePendingReviews()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff[PorkNotes]|r Note for |cffffcc00" .. playername .. "|r received from " .. sender .. ". |Hporknotes_review:" .. playername .. "|h|cffffcc00[Review]|h|r")
         TryShowSyncReview()
+        return
+    end
+
+    -- Auto-accept mode with throttle: if throttled and timestamp is old/equal, silently ignore
+    if isThrottled and incomingTime <= localTime then
+        if PorkNotes.ChatDebug then
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PorkNotes Debug]|r Throttled sync from " .. sender .. " for " .. playername .. " ignored (older/equal timestamp)")
+        end
         return
     end
 

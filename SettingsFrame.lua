@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame", "PorkNotes_SettingsFrame", UIParent)
 frame:SetWidth(380)
-frame:SetHeight(460)
+frame:SetHeight(490)  -- Increased from 460 to 490 for sync toggle
 frame:SetPoint("CENTER", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetMovable(true)
@@ -120,16 +120,19 @@ CreateCheckbox("ShowNotesInTooltips", "Display player notes in tooltips", 20, y)
 
 CreateCheckbox("ShowMinimapButton", "Show minimap button", 20, y); y = y + 35
 
-CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 25
+CreateCheckbox("SyncEnabled", "Receive synced notes from other players", 20, y); y = y + 35
+
+CreateCheckbox("SyncAutoAccept", "Auto-accept incoming syncs (newer notes only)", 20, y); y = y + 35
 CreateCheckbox("SyncAutoPopup", "Auto-open review window on sync receive (out of combat only)", 20, y); y = y + 35
 
 -- World/LFG chat frame dropdown
 local dropdownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 dropdownLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
 dropdownLabel:SetText("Route World/LFG alerts to:")
+dropdownLabel:SetTextColor(1, 0.82, 0)
 
 local dropdown = CreateFrame("Frame", frame:GetName() .. "_WorldChatDropdown", frame, "UIDropDownMenuTemplate")
-dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 14))
+dropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -y)
 UIDropDownMenu_SetWidth(100, dropdown)
 y = y + 40
 
@@ -157,10 +160,10 @@ end
 local historyLimitLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 historyLimitLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -y)
 historyLimitLabel:SetText("Note history limit:")
-historyLimitLabel:SetTextColor(1, 1, 1)
+historyLimitLabel:SetTextColor(1, 0.82, 0)
 
 local historyDropdown = CreateFrame("Frame", frame:GetName() .. "_HistoryDropdown", frame, "UIDropDownMenuTemplate")
-historyDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -(y - 6))
+historyDropdown:SetPoint("TOPLEFT", frame, "TOPLEFT", 150, -y)
 UIDropDownMenu_SetWidth(100, historyDropdown)
 
 local historyOptions = {
@@ -209,6 +212,7 @@ PorkNotes.ShowSettingsFrame = function()
 
     checkboxes.ShowNotesInTooltips:SetChecked(PorkNotes.GetSetting("ShowNotesInTooltips", true))
     checkboxes.ShowMinimapButton:SetChecked(PorkNotes.GetSetting("ShowMinimapButton", true))
+    checkboxes.SyncEnabled:SetChecked(PorkNotes.GetSetting("SyncEnabled", true))
     checkboxes.SyncAutoAccept:SetChecked(PorkNotes.GetSetting("SyncAutoAccept", false))
     checkboxes.SyncAutoPopup:SetChecked(PorkNotes.GetSetting("SyncAutoPopup", false))
 
